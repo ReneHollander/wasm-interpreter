@@ -72,6 +72,8 @@ typedef struct tabletype {
     limit_t lim;
 } tabletype_t;
 
+DEFINE_VEC_STRUCT(tabletype);
+
 typedef struct memtype {
     limit_t lim;
 } memtype_t;
@@ -103,6 +105,10 @@ typedef struct function_section {
     vec_typeidx_t *x;
 } function_section_t;
 
+typedef struct table_section {
+    vec_tabletype_t *tab;
+} table_section_t;
+
 typedef struct section {
     section_type_t id;
     u32 size;
@@ -111,6 +117,7 @@ typedef struct section {
         type_section_t type_section;
         import_section_t import_section;
         function_section_t function_section;
+        table_section_t table_section;
     };
 } section_t;
 
