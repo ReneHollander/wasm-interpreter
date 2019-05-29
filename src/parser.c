@@ -4,7 +4,7 @@
 #include "value.h"
 #include "instruction.h"
 #include "module.h"
-#include "malloc.h"
+#include "stdlib.h"
 #include "string.h"
 
 #define MAKE_NEXT_VEC(result_type, element_type, generator_func, name) \
@@ -30,6 +30,7 @@ static inline result_type *name() { \
 }
 
 extern void parse_error(char *msg);
+
 static FILE *input;
 
 static byte next_byte() {
