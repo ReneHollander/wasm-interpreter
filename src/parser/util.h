@@ -1,6 +1,7 @@
 #ifndef PARSER_UTIL_H
 #define PARSER_UTIL_H
 
+#include "stdlib.h"
 #include "../util.h"
 
 #define MAKE_NEXT_VEC(result_type, element_type, generator_func, name) \

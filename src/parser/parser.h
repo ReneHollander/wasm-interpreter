@@ -5,31 +5,7 @@
 #include <stdio.h>
 #include "util.h"
 #include "../type.h"
-
-DEFINE_VEC_STRUCT_PRIMITIVE(byte);
-DEFINE_VEC_STRUCT_PRIMITIVE(typeidx);
-
-typedef struct limit {
-    u32 min;
-    u32 max;
-    bool has_max;
-} limit_t;
-
-typedef enum valtype {
-    valtype_i32,
-    valtype_i64,
-    valtype_f32,
-    valtype_f64,
-} valtype_t;
-
-DEFINE_VEC_STRUCT(valtype);
-
-typedef struct functype {
-    vec_valtype_t *t1;
-    vec_valtype_t *t2;
-} functype_t;
-
-DEFINE_VEC_STRUCT(functype);
+#include "../instruction.h"
 
 typedef enum section_type {
     SECTION_TYPE_CUSTOM = 0,
@@ -45,11 +21,6 @@ typedef enum section_type {
     SECTION_TYPE_CODE = 10,
     SECTION_TYPE_DATA = 11,
 } section_type_t;
-
-typedef enum mutability {
-    MUTABILITY_CONST = 0x00,
-    MUTABILITY_VAR = 0x01
-} mutability_t;
 
 typedef struct custom_section {
     char *name;
@@ -68,17 +39,12 @@ typedef enum importdesc {
     IMPORTDESC_GLOBAL = 0x03,
 } importdesc_t;
 
-typedef struct tabletype {
-    limit_t lim;
-} tabletype_t;
-
-DEFINE_VEC_STRUCT(tabletype);
-
-typedef struct memtype {
-    limit_t lim;
-} memtype_t;
-
-DEFINE_VEC_STRUCT(memtype);
+typedef enum exportdesc {
+    EXPORTDESC_FUNC = 0x00,
+    EXPORTDESC_TABLE = 0x01,
+    EXPORTDESC_MEM = 0x02,
+    EXPORTDESC_GLOBAL = 0x03,
+} exportdesc_t;
 
 typedef struct globaltype {
     valtype_t t;
@@ -88,32 +54,60 @@ typedef struct globaltype {
 typedef struct import {
     char *module;
     char *name;
-    importdesc_t type;
+    importdesc_t desc;
     union {
-        typeidx x;
-        tabletype_t tt;
-        memtype_t mt;
-        globaltype_t gt;
+        typeidx func;
+        tabletype_t table;
+        memtype_t mem;
+        globaltype_t global;
     };
 } import_t;
 
 DEFINE_VEC_STRUCT(import);
 
+typedef struct export {
+    char *name;
+    exportdesc_t desc;
+    union {
+        funcidx func;
+        tableidx table;
+        memidx mem;
+        globalidx global;
+    };
+} export_t;
+
+DEFINE_VEC_STRUCT(export);
+
+typedef struct global {
+    globaltype_t gt;
+    expression_t e;
+} global_t;
+
+DEFINE_VEC_STRUCT(global);
+
 typedef struct import_section {
-    vec_import_t *im;
+    vec_import_t *imports;
 } import_section_t;
 
 typedef struct function_section {
-    vec_typeidx_t *x;
+    vec_typeidx_t *functions;
 } function_section_t;
 
 typedef struct table_section {
-    vec_tabletype_t *tab;
+    vec_tabletype_t *tables;
 } table_section_t;
 
 typedef struct memory_section {
-    vec_memtype_t *mem;
+    vec_memtype_t *memories;
 } memory_section_t;
+
+typedef struct global_section {
+    vec_global_t *globals;
+} global_section_t;
+
+typedef struct export_section {
+    vec_export_t *exports;
+} export_section_t;
 
 typedef struct section {
     section_type_t id;
@@ -125,6 +119,8 @@ typedef struct section {
         function_section_t function_section;
         table_section_t table_section;
         memory_section_t memory_section;
+        global_section_t global_section;
+        export_section_t export_section;
     };
 } section_t;
 

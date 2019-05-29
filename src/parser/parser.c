@@ -2,6 +2,7 @@
 
 #include "parser.h"
 #include "next.h"
+#include "expression_parser.h"
 
 FILE *input;
 size_t consumed_counter;
@@ -95,23 +96,47 @@ static inline void parse_import(import_t *import) {
     import->module = next_name();
     import->name = next_name();
 
-    printf("module=%s, name=%s\n", import->module, import->name);
-
     switch (next_byte()) {
         case IMPORTDESC_FUNC:
-            import->x = next_u32();
+            import->func = next_typeidx();
             break;
         case IMPORTDESC_TABLE:
-            parse_tabletype(&import->tt);
+            parse_tabletype(&import->table);
             break;
         case IMPORTDESC_MEM:
-            parse_memtype(&import->mt);
+            parse_memtype(&import->mem);
             break;
         case IMPORTDESC_GLOBAL:
-            parse_globaltype(&import->gt);
+            parse_globaltype(&import->global);
             break;
         default:
             parse_error("unknown importdesc type");
+    }
+}
+
+static inline void parse_global(global_t *global) {
+    parse_globaltype(&global->gt);
+    parse_expression(&global->e);
+}
+
+static inline void parse_export(export_t *export) {
+    export->name = next_name();
+
+    switch (next_byte()) {
+        case EXPORTDESC_FUNC:
+            export->func = next_funcidx();
+            break;
+        case EXPORTDESC_TABLE:
+            export->table = next_tableidx();
+            break;
+        case EXPORTDESC_MEM:
+            export->mem = next_memidx();
+            break;
+        case EXPORTDESC_GLOBAL:
+            export->global = next_globalidx();
+            break;
+        default:
+            parse_error("unknown exportdesc type");
     }
 }
 
@@ -121,32 +146,36 @@ MAKE_NEXT_VEC_BY_REFERENCE(vec_tabletype_t, tabletype_t, parse_tabletype, parse_
 
 MAKE_NEXT_VEC_BY_REFERENCE(vec_memtype_t, memtype_t, parse_memtype, parse_vec_memtype)
 
+MAKE_NEXT_VEC_BY_REFERENCE(vec_global_t, global_t, parse_global, parse_vec_global)
+
+MAKE_NEXT_VEC_BY_REFERENCE(vec_export_t, export_t, parse_export, parse_vec_export)
+
 static void parse_type_section(section_t *section) {
     section->type_section.ft = parse_vec_functype();
 }
 
 static void parse_import_section(section_t *section) {
-    section->import_section.im = parse_vec_import();
+    section->import_section.imports = parse_vec_import();
 }
 
 static void parse_function_section(section_t *section) {
-    section->function_section.x = next_vec_typeidx();
+    section->function_section.functions = next_vec_typeidx();
 }
 
 static void parse_table_section(section_t *section) {
-    section->table_section.tab = parse_vec_tabletype();
+    section->table_section.tables = parse_vec_tabletype();
 }
 
 static void parse_memory_section(section_t *section) {
-    section->memory_section.mem = parse_vec_memtype();
+    section->memory_section.memories = parse_vec_memtype();
 }
 
 static void parse_global_section(section_t *section) {
-    advance(section->size);
+    section->global_section.globals = parse_vec_global();
 }
 
 static void parse_export_section(section_t *section) {
-    advance(section->size);
+    section->export_section.exports = parse_vec_export();
 }
 
 static void parse_start_section(section_t *section) {

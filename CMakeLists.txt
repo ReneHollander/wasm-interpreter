@@ -4,7 +4,10 @@ project(wasm_interpreter C)
 
 add_library(wasm_parser
         src/type.h
+        src/instruction.h
         src/parser/next.h
+        src/parser/expression_parser.h
+        src/parser/expression_parser.c
         src/parser/parser.h
         src/parser/parser.c
         )
