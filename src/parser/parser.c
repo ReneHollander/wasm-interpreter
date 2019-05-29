@@ -126,7 +126,7 @@ static void parse_import_section(section_t *section) {
 }
 
 static void parse_function_section(section_t *section) {
-    advance(section->size);
+    section->function_section.x = next_vec_typeidx();
 }
 
 static void parse_table_section(section_t *section) {

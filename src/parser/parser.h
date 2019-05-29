@@ -7,6 +7,7 @@
 #include "../type.h"
 
 DEFINE_VEC_STRUCT_PRIMITIVE(byte);
+DEFINE_VEC_STRUCT_PRIMITIVE(typeidx);
 
 typedef struct limit {
     u32 min;
@@ -98,6 +99,10 @@ typedef struct import_section {
     vec_import_t *im;
 } import_section_t;
 
+typedef struct function_section {
+    vec_typeidx_t *x;
+} function_section_t;
+
 typedef struct section {
     section_type_t id;
     u32 size;
@@ -105,6 +110,7 @@ typedef struct section {
         custom_section_t custom_section;
         type_section_t type_section;
         import_section_t import_section;
+        function_section_t function_section;
     };
 } section_t;
 

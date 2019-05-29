@@ -64,6 +64,7 @@ static inline u32 next_u32() {
 }
 
 MAKE_NEXT_VEC(vec_byte_t, byte, next_byte, next_vec_byte)
+MAKE_NEXT_VEC(vec_typeidx_t, typeidx, next_u32, next_vec_typeidx)
 
 static inline char *next_name() {
     vec_byte_t *vec = next_vec_byte();
