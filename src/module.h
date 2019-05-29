@@ -1,11 +1,9 @@
-#ifndef PARSER_PARSER_H
-#define PARSER_PARSER_H
+#ifndef MODULE_H
+#define MODULE_H
 
-#include <stdint.h>
-#include <stdio.h>
-#include "util.h"
-#include "../type.h"
-#include "../instruction.h"
+#include "type.h"
+#include "value.h"
+#include "instruction.h"
 
 typedef enum section_type {
     SECTION_TYPE_CUSTOM = 0,
@@ -22,14 +20,8 @@ typedef enum section_type {
     SECTION_TYPE_DATA = 11,
 } section_type_t;
 
-typedef struct custom_section {
-    char *name;
-    u32 length;
-    byte *bytes;
-} custom_section_t;
-
 typedef struct type_section {
-    vec_functype_t *ft;
+    vec_functype_t *types;
 } type_section_t;
 
 typedef enum importdesc {
@@ -38,18 +30,6 @@ typedef enum importdesc {
     IMPORTDESC_MEM = 0x02,
     IMPORTDESC_GLOBAL = 0x03,
 } importdesc_t;
-
-typedef enum exportdesc {
-    EXPORTDESC_FUNC = 0x00,
-    EXPORTDESC_TABLE = 0x01,
-    EXPORTDESC_MEM = 0x02,
-    EXPORTDESC_GLOBAL = 0x03,
-} exportdesc_t;
-
-typedef struct globaltype {
-    valtype_t t;
-    mutability_t m;
-} globaltype_t;
 
 typedef struct import {
     char *module;
@@ -64,26 +44,6 @@ typedef struct import {
 } import_t;
 
 DEFINE_VEC_STRUCT(import);
-
-typedef struct export {
-    char *name;
-    exportdesc_t desc;
-    union {
-        funcidx func;
-        tableidx table;
-        memidx mem;
-        globalidx global;
-    };
-} export_t;
-
-DEFINE_VEC_STRUCT(export);
-
-typedef struct global {
-    globaltype_t gt;
-    expression_t e;
-} global_t;
-
-DEFINE_VEC_STRUCT(global);
 
 typedef struct import_section {
     vec_import_t *imports;
@@ -101,9 +61,36 @@ typedef struct memory_section {
     vec_memtype_t *memories;
 } memory_section_t;
 
+typedef struct global {
+    globaltype_t gt;
+    expression_t e;
+} global_t;
+
+DEFINE_VEC_STRUCT(global);
+
 typedef struct global_section {
     vec_global_t *globals;
 } global_section_t;
+
+typedef enum exportdesc {
+    EXPORTDESC_FUNC = 0x00,
+    EXPORTDESC_TABLE = 0x01,
+    EXPORTDESC_MEM = 0x02,
+    EXPORTDESC_GLOBAL = 0x03,
+} exportdesc_t;
+
+typedef struct export {
+    char *name;
+    exportdesc_t desc;
+    union {
+        funcidx func;
+        tableidx table;
+        memidx mem;
+        globalidx global;
+    };
+} export_t;
+
+DEFINE_VEC_STRUCT(export);
 
 typedef struct export_section {
     vec_export_t *exports;
@@ -113,7 +100,6 @@ typedef struct section {
     section_type_t id;
     u32 size;
     union {
-        custom_section_t custom_section;
         type_section_t type_section;
         import_section_t import_section;
         function_section_t function_section;
@@ -124,8 +110,4 @@ typedef struct section {
     };
 } section_t;
 
-void set_input(FILE *i);
-
-void parse();
-
-#endif // PARSER_PARSER_H
+#endif // MODULE_H

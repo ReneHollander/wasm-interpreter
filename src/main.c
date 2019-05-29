@@ -1,8 +1,7 @@
 #include <stdlib.h>
 #include <errno.h>
 #include <string.h>
-#include "parser/parser.h"
-#include "parser/next.h"
+#include "parser.h"
 
 void parse_error(char* msg) {
     fprintf(stderr, "Error parsing module: %s\n", msg);
@@ -21,8 +20,7 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    set_input(input);
-    parse();
+    parse(input);
 
     fclose(input);
     fprintf(stdout, "Parsing successful\n");

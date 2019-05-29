@@ -193,11 +193,6 @@ typedef enum opcode {
 typedef struct instruction instruction_t;
 typedef struct vec_instruction vec_instruction_t;
 
-typedef struct blocktype {
-    bool empty;
-    valtype_t type;
-} blocktype_t;
-
 typedef struct insn_block {
     blocktype_t resulttype;
     vec_instruction_t *instructions;
