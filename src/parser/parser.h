@@ -78,6 +78,8 @@ typedef struct memtype {
     limit_t lim;
 } memtype_t;
 
+DEFINE_VEC_STRUCT(memtype);
+
 typedef struct globaltype {
     valtype_t t;
     mutability_t m;
@@ -109,6 +111,10 @@ typedef struct table_section {
     vec_tabletype_t *tab;
 } table_section_t;
 
+typedef struct memory_section {
+    vec_memtype_t *mem;
+} memory_section_t;
+
 typedef struct section {
     section_type_t id;
     u32 size;
@@ -118,6 +124,7 @@ typedef struct section {
         import_section_t import_section;
         function_section_t function_section;
         table_section_t table_section;
+        memory_section_t memory_section;
     };
 } section_t;
 

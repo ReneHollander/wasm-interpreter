@@ -116,7 +116,10 @@ static inline void parse_import(import_t *import) {
 }
 
 MAKE_NEXT_VEC_BY_REFERENCE(vec_import_t, import_t, parse_import, parse_vec_import)
+
 MAKE_NEXT_VEC_BY_REFERENCE(vec_tabletype_t, tabletype_t, parse_tabletype, parse_vec_tabletype)
+
+MAKE_NEXT_VEC_BY_REFERENCE(vec_memtype_t, memtype_t, parse_memtype, parse_vec_memtype)
 
 static void parse_type_section(section_t *section) {
     section->type_section.ft = parse_vec_functype();
@@ -135,7 +138,7 @@ static void parse_table_section(section_t *section) {
 }
 
 static void parse_memory_section(section_t *section) {
-    advance(section->size);
+    section->memory_section.mem = parse_vec_memtype();
 }
 
 static void parse_global_section(section_t *section) {
