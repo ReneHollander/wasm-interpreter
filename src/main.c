@@ -3,7 +3,7 @@
 #include <string.h>
 #include "parser.h"
 
-void parse_error(char* msg) {
+void parse_error(char *msg) {
     fprintf(stderr, "Error parsing module: %s\n", msg);
     exit(EXIT_FAILURE);
 }
@@ -20,9 +20,10 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    parse(input);
-
+    module_t *module = parse(input);
     fclose(input);
-    fprintf(stdout, "Parsing successful\n");
+
+    printf("Found %d functions\n", module->funcs->length);
+
     return 0;
 }

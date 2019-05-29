@@ -2,7 +2,8 @@
 #define PARSER_H
 
 #include "stdio.h"
+#include "module.h"
 
-void parse(FILE *input);
+module_t *parse(FILE *input);
 
 #endif // PARSER_H

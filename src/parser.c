@@ -6,6 +6,7 @@
 #include "module.h"
 #include "stdlib.h"
 #include "string.h"
+#include "strings.h"
 
 #define MAKE_NEXT_VEC(result_type, element_type, generator_func, name) \
 static inline result_type *name() { \
@@ -81,28 +82,8 @@ static inline uint64_t read_LEB(uint32_t maxbits, bool sign) {
     return result;
 }
 
-static inline u8 next_u8() {
-    return read_LEB(8, false);
-}
-
-static inline u16 next_u16() {
-    return read_LEB(16, false);
-}
-
 static inline u32 next_u32() {
     return read_LEB(32, false);
-}
-
-static inline u64 next_u64() {
-    return read_LEB(64, false);
-}
-
-static inline s8 next_s8() {
-    return read_LEB(8, true);
-}
-
-static inline s16 next_s16() {
-    return read_LEB(16, true);
 }
 
 static inline s32 next_s32() {
@@ -175,6 +156,8 @@ MAKE_NEXT_VEC(vec_byte_t, byte, next_byte, next_vec_byte)
 
 MAKE_NEXT_VEC(vec_typeidx_t, typeidx, next_typeidx, next_vec_typeidx)
 
+MAKE_NEXT_VEC(vec_funcidx_t, funcidx, next_funcidx, next_vec_funcidx)
+
 MAKE_NEXT_VEC(vec_labelidx_t, labelidx, next_labelidx, next_vec_labelidx)
 
 static inline name next_name() {
@@ -233,7 +216,7 @@ static inline void parse_blocktype(blocktype_t *blocktype) {
 
 static inline void parse_insn_block(insn_block_t *block) {
     parse_blocktype(&block->resulttype);
-    block->instructions = malloc(sizeof(vec_instruction_t));
+    block->instructions = calloc(1, sizeof(vec_instruction_t));
     while (peek_byte() != 0x0B) {
         instruction_t *allocated = allocate_instruction(&block->instructions);
         parse_instruction(allocated);
@@ -243,13 +226,14 @@ static inline void parse_insn_block(insn_block_t *block) {
 
 static inline void parse_insn_if(insn_if_t *if_block) {
     parse_blocktype(&if_block->resulttype);
-    if_block->ifpath = malloc(sizeof(vec_instruction_t));
+    if_block->ifpath = calloc(1, sizeof(vec_instruction_t));
     while (peek_byte() != OP_ELSE && peek_byte() != 0x0B) {
         instruction_t *allocated = allocate_instruction(&if_block->ifpath);
         parse_instruction(allocated);
     }
-    if (next_byte() == OP_ELSE) {
-        if_block->elsepath = malloc(sizeof(vec_instruction_t));
+    if (peek_byte() == OP_ELSE) {
+        next_byte();
+        if_block->elsepath = calloc(1, sizeof(vec_instruction_t));
         while (peek_byte() != 0x0B) {
             instruction_t *allocated = allocate_instruction(&if_block->elsepath);
             parse_instruction(allocated);
@@ -262,7 +246,6 @@ static inline void parse_insn_if(insn_if_t *if_block) {
 
 static inline void parse_instruction(instruction_t *instruction) {
     instruction->opcode = next_byte();
-
     switch (instruction->opcode) {
         case OP_BLOCK:
         case OP_LOOP:
@@ -473,7 +456,7 @@ static inline void parse_instruction(instruction_t *instruction) {
 }
 
 void parse_expression(expression_t *expression) {
-    expression->instructions = malloc(sizeof(vec_instruction_t));
+    expression->instructions = calloc(1, sizeof(vec_instruction_t));
     while (peek_byte() != 0x0B) {
         instruction_t *allocated = allocate_instruction(&expression->instructions);
         parse_instruction(allocated);
@@ -622,19 +605,50 @@ static void parse_export_section(section_t *section) {
 }
 
 static void parse_start_section(section_t *section) {
-    advance(section->size);
+    section->start_section.start = next_funcidx();
 }
+
+static inline void parse_element(element_t *element) {
+    element->table = next_tableidx();
+    parse_expression(&element->offset);
+    element->init = next_vec_funcidx();
+}
+
+MAKE_NEXT_VEC_BY_REFERENCE(vec_element_t, element_t, parse_element, parse_vec_element)
 
 static void parse_element_section(section_t *section) {
-    advance(section->size);
+    section->element_section.elements = parse_vec_element();
 }
+
+static inline void parse_locals(locals_t *locals) {
+    locals->n = next_u32();
+    locals->t = parse_valtype();
+}
+
+MAKE_NEXT_VEC_BY_REFERENCE(vec_locals_t, locals_t, parse_locals, parse_vec_locals);
+
+static inline void parse_func(func_t *func) {
+    u32 size = next_u32();
+    func->locals = parse_vec_locals();
+    parse_expression(&func->expression);
+}
+
+MAKE_NEXT_VEC_BY_REFERENCE(vec_func_t, func_t, parse_func, parse_vec_func)
 
 static void parse_code_section(section_t *section) {
-    advance(section->size);
+    section->code_section.funcs = parse_vec_func();
 }
 
+static inline void parse_data(data_t *data) {
+    data->memidx = next_memidx();
+    parse_expression(&data->expression);
+    data->init = next_vec_byte();
+}
+
+MAKE_NEXT_VEC_BY_REFERENCE(vec_data_t, data_t, parse_data, parse_vec_data)
+
 static void parse_data_section(section_t *section) {
-    advance(section->size);
+    section->data_section.datas = parse_vec_data();
 }
 
 static void parse_section(section_t *section) {
@@ -688,8 +702,10 @@ static void parse_section(section_t *section) {
     }
 }
 
-void parse(FILE *i) {
-    input = i;
+module_t *parse(FILE *input_file) {
+    input = input_file;
+
+    module_t *module = calloc(1, sizeof(module_t));
 
     // Check magic value of module.
     if (next_byte() != 0x00 || next_byte() != 0x61 || next_byte() != 0x73 || next_byte() != 0x6D) {
@@ -701,6 +717,8 @@ void parse(FILE *i) {
         parse_error("unknown version number");
     }
 
+    function_section_t function_section;
+
     while (1) {
         int next = fgetc(input);
         if (next == EOF) break;
@@ -708,6 +726,50 @@ void parse(FILE *i) {
 
         section_t section;
         parse_section(&section);
-        printf("sectionid=%d\n", section.id);
+
+        switch (section.id) {
+            case SECTION_TYPE_TYPE:
+                function_section = section.function_section;
+                break;
+            case SECTION_TYPE_CUSTOM: // Ignore.
+                break;
+            case SECTION_TYPE_IMPORT:
+                module->imports = section.import_section.imports;
+                break;
+            case SECTION_TYPE_FUNCTION:
+                module->types = section.type_section.types;
+                break;
+            case SECTION_TYPE_TABLE:
+                module->tables = section.table_section.tables;
+                break;
+            case SECTION_TYPE_MEMORY:
+                module->mems = section.memory_section.memories;
+                break;
+            case SECTION_TYPE_GLOBAL:
+                module->globals = section.global_section.globals;
+                break;
+            case SECTION_TYPE_EXPORT:
+                module->exports = section.export_section.exports;
+                break;
+            case SECTION_TYPE_START:
+                module->has_start = true;
+                module->start = section.start_section.start;
+                break;
+            case SECTION_TYPE_ELEMENT:
+                module->elem = section.element_section.elements;
+                break;
+            case SECTION_TYPE_CODE:
+                module->funcs = section.code_section.funcs;
+                break;
+            case SECTION_TYPE_DATA:
+                module->data = section.data_section.datas;
+                break;
+        }
     }
+
+    for (u32 i = 0; i < function_section.functions->length; i++) {
+        module->funcs->values[i].type = function_section.functions->values[i];
+    }
+
+    return module;
 }

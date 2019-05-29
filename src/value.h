@@ -22,7 +22,7 @@ typedef s64 i64;
 typedef float f32;
 typedef double f64;
 
-typedef char* name;
+typedef char *name;
 
 typedef u32 typeidx;
 typedef u32 funcidx;
@@ -46,6 +46,7 @@ typedef struct CAT(vec_, type) { \
 
 DEFINE_VEC_STRUCT_PRIMITIVE(byte);
 DEFINE_VEC_STRUCT_PRIMITIVE(typeidx);
+DEFINE_VEC_STRUCT_PRIMITIVE(funcidx);
 DEFINE_VEC_STRUCT_PRIMITIVE(labelidx);
 
 #endif // VALUE_H

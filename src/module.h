@@ -32,8 +32,8 @@ typedef enum importdesc {
 } importdesc_t;
 
 typedef struct import {
-    char *module;
-    char *name;
+    name module;
+    name name;
     importdesc_t desc;
     union {
         typeidx func;
@@ -80,7 +80,7 @@ typedef enum exportdesc {
 } exportdesc_t;
 
 typedef struct export {
-    char *name;
+    name name;
     exportdesc_t desc;
     union {
         funcidx func;
@@ -96,6 +96,53 @@ typedef struct export_section {
     vec_export_t *exports;
 } export_section_t;
 
+typedef struct start_section {
+    funcidx start;
+} start_section_t;
+
+typedef struct element {
+    tableidx table;
+    expression_t offset;
+    vec_funcidx_t *init;
+} element_t;
+
+DEFINE_VEC_STRUCT(element);
+
+typedef struct element_section {
+    vec_element_t *elements;
+} element_section_t;
+
+typedef struct locals {
+    u32 n;
+    valtype_t t;
+} locals_t;
+
+DEFINE_VEC_STRUCT(locals);
+
+typedef struct func {
+    typeidx type;
+    vec_locals_t *locals;
+    expression_t expression;
+} func_t;
+
+DEFINE_VEC_STRUCT(func);
+
+typedef struct code_section {
+    vec_func_t *funcs;
+} code_section_t;
+
+typedef struct data {
+    memidx memidx;
+    expression_t expression;
+    vec_byte_t *init;
+} data_t;
+
+DEFINE_VEC_STRUCT(data);
+
+typedef struct data_section {
+    vec_data_t *datas;
+} data_section_t;
+
 typedef struct section {
     section_type_t id;
     u32 size;
@@ -107,7 +154,25 @@ typedef struct section {
         memory_section_t memory_section;
         global_section_t global_section;
         export_section_t export_section;
+        start_section_t start_section;
+        element_section_t element_section;
+        code_section_t code_section;
+        data_section_t data_section;
     };
 } section_t;
+
+typedef struct module {
+    vec_functype_t *types;
+    vec_func_t *funcs;
+    vec_tabletype_t *tables;
+    vec_memtype_t *mems;
+    vec_global_t *globals;
+    vec_element_t *elem;
+    vec_data_t *data;
+    bool has_start;
+    funcidx start;
+    vec_import_t *imports;
+    vec_export_t *exports;
+} module_t;
 
 #endif // MODULE_H

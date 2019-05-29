@@ -7,6 +7,7 @@ add_library(wasm_parser
         src/instruction.h
         src/module.h
         src/value.h
+        src/strings.h
         src/parser.h
         src/parser.c
         )
