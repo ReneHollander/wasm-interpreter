@@ -527,8 +527,9 @@ MAKE_NEXT_VEC_BY_REFERENCE(vec_memtype_t, memtype_t, parse_memtype, parse_vec_me
 static inline void parse_import(import_t *import) {
     import->module = next_name();
     import->name = next_name();
+    import->desc = next_byte();
 
-    switch (next_byte()) {
+    switch (import->desc) {
         case IMPORTDESC_FUNC:
             import->func = next_typeidx();
             break;
@@ -578,8 +579,9 @@ static void parse_global_section(section_t *section) {
 
 static inline void parse_export(export_t *export) {
     export->name = next_name();
+    export->desc = next_byte();
 
-    switch (next_byte()) {
+    switch (export->desc) {
         case EXPORTDESC_FUNC:
             export->func = next_funcidx();
             break;
