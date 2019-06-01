@@ -27,7 +27,7 @@ add_executable(wasm_interpreter
         src/memory.c
         src/memory.h
         src/variable.c
-        src/variable.h)
+        src/variable.h src/control.c src/control.h)
 set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
 
 target_link_libraries(wasm_interpreter wasm_parser)

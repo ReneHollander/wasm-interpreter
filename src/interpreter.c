@@ -8,6 +8,7 @@
 #include "list.h"
 #include "memory.h"
 #include "variable.h"
+#include "control.h"
 
 static void init(void);
 
@@ -31,9 +32,11 @@ static void eval_instr(instruction_t instr);
 
 static void eval_instrs(vec_instruction_t *instructions);
 
-static void eval_numeric(instruction_t instr);
+static void eval_numeric_instr(instruction_t instr);
 
-static void eval_variable(instruction_t instr);
+static void eval_variable_instr(instruction_t instr);
+
+static void eval_control_instr(instruction_t instr);
 
 static void eval_local_get(localidx idx);
 
@@ -75,17 +78,23 @@ static void interpreter_error(char *err_message);
 
 static void print_result(func_t func);
 
-stack opd_stack;
+static stack opd_stack;
 
-module_t *module_global;
+static module_t *module_global;
 
 /* Intended to call the start function of the module - not yet implemented */
 void interpret(module_t *module) {
     module_global = module;
     init();
 
+    if (module->types == NULL || module->funcs == NULL) {
+        interpreter_error("could not find all required sections \n");
+    }
+
     if (module->has_start) {
         //call start function
+    } else {
+        interpreter_error("no start function found\n");
     }
 }
 
@@ -93,6 +102,10 @@ void interpret(module_t *module) {
 void interpret_function(module_t *module, char *func_name) {
     module_global = module;
     init();
+
+    if (module->exports == NULL || module->types == NULL || module->funcs == NULL) {
+        interpreter_error("could not find all required sections \n");
+    }
 
     func_t func = find_func(module->exports, module->funcs, func_name);
     call_func(func);
@@ -221,7 +234,6 @@ static void init_global(global_t global) {
     eval_expr(global.e);
 
     //the result of the expression should be on the operand stack now, so we can consume it
-
     switch (global.gt.t) {
         case VALTYPE_I32:
             insert_global_i32(pop_opd_i32());
@@ -275,12 +287,11 @@ static void eval_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     if (is_numeric_instr(opcode)) {
-        eval_numeric(instr);
+        eval_numeric_instr(instr);
     } else if (is_variable_instr(opcode)) {
-        eval_variable(instr);
-    } else if (opcode == OP_CALL) {
-        func_t func = module_global->funcs->values[instr.funcidx];
-        call_func(func);
+        eval_variable_instr(instr);
+    } else if (is_control_instr(opcode)) {
+        eval_control_instr(instr);
     } else {
         fprintf(stderr, "not yet implemented (opcode %x)\n", opcode);
         exit(EXIT_FAILURE);
@@ -288,7 +299,16 @@ static void eval_instr(instruction_t instr) {
 
 }
 
-static void eval_numeric(instruction_t instr) {
+static void eval_control_instr(instruction_t instr) {
+    opcode_t opcode = instr.opcode;
+
+    if (opcode == OP_CALL) {
+        func_t func = module_global->funcs->values[instr.funcidx];
+        call_func(func);
+    }
+}
+
+static void eval_numeric_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     if (opcode == OP_I32_CONST) {
@@ -347,13 +367,83 @@ static void eval_numeric(instruction_t instr) {
         i64 op2 = pop_opd_i64();
         i64 op1 = pop_opd_i64();
         push_opd_i64(mul_i64(op1, op2));
+    } else if (opcode == OP_F32_MIN) {
+        f32 op2 = pop_opd_f32();
+        f32 op1 = pop_opd_f32();
+        push_opd_f32(min_f32(op1, op2));
+    } else if (opcode == OP_F64_MIN) {
+        f64 op2 = pop_opd_f64();
+        f64 op1 = pop_opd_f64();
+        push_opd_f64(min_f64(op1, op2));
+    } else if (opcode == OP_F32_MAX) {
+        f32 op2 = pop_opd_f32();
+        f32 op1 = pop_opd_f32();
+        push_opd_f32(max_f32(op1, op2));
+    } else if (opcode == OP_F64_MAX) {
+        f64 op2 = pop_opd_f64();
+        f64 op1 = pop_opd_f64();
+        push_opd_f64(max_f64(op1, op2));
+    } else if (opcode == OP_F32_SQRT) {
+        f32 op = pop_opd_f32();
+        push_opd_f32(sqrt_f32(op));
+    } else if (opcode == OP_F64_SQRT) {
+        f64 op = pop_opd_f64();
+        push_opd_f64(sqrt_f64(op));
+    } else if (opcode == OP_F32_FLOOR) {
+        f32 op = pop_opd_f32();
+        push_opd_f32(floor_f32(op));
+    } else if (opcode == OP_F64_FLOOR) {
+        f64 op = pop_opd_f64();
+        push_opd_f64(floor_f64(op));
+    } else if (opcode == OP_F32_CEIL) {
+        f32 op = pop_opd_f32();
+        push_opd_f32(ceil_f32(op));
+    } else if (opcode == OP_F64_CEIL) {
+        f64 op = pop_opd_f64();
+        push_opd_f64(ceil_f64(op));
+    } else if (opcode == OP_F32_ABS) {
+        f32 op = pop_opd_f32();
+        push_opd_f32(abs_f32(op));
+    } else if (opcode == OP_F64_ABS) {
+        f64 op = pop_opd_f64();
+        push_opd_f64(abs_f64(op));
+    } else if (opcode == OP_F32_NEG) {
+        f32 op = pop_opd_f32();
+        push_opd_f32(neg_f32(op));
+    } else if (opcode == OP_F64_NEG) {
+        f64 op = pop_opd_f64();
+        push_opd_f64(neg_f64(op));
+    } else if (opcode == OP_I32_OR) {
+        i32 op2 = pop_opd_i32();
+        i32 op1 = pop_opd_i32();
+        push_opd_i32(or_i32(op1, op2));
+    } else if (opcode == OP_I64_OR) {
+        i64 op2 = pop_opd_i64();
+        i64 op1 = pop_opd_i64();
+        push_opd_i64(or_i64(op1, op2));
+    } else if (opcode == OP_I32_XOR) {
+        i32 op2 = pop_opd_i32();
+        i32 op1 = pop_opd_i32();
+        push_opd_i32(xor_i32(op1, op2));
+    } else if (opcode == OP_I64_XOR) {
+        i64 op2 = pop_opd_i64();
+        i64 op1 = pop_opd_i64();
+        push_opd_i64(xor_i64(op1, op2));
+    } else if (opcode == OP_I32_AND) {
+        i32 op2 = pop_opd_i32();
+        i32 op1 = pop_opd_i32();
+        push_opd_i32(and_i32(op1, op2));
+    } else if (opcode == OP_I64_AND) {
+        i64 op2 = pop_opd_i64();
+        i64 op1 = pop_opd_i64();
+        push_opd_i64(and_i64(op1, op2));
     } else {
         fprintf(stderr, "numeric instruction with opcode %X currently not supported\n", opcode);
         exit(EXIT_FAILURE);
     }
 }
 
-static void eval_variable(instruction_t instr) {
+static void eval_variable_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     switch (opcode) {
