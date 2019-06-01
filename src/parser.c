@@ -731,7 +731,7 @@ module_t *parse(FILE *input_file) {
 
         switch (section.id) {
             case SECTION_TYPE_TYPE:
-                function_section = section.function_section;
+                module->types = section.type_section.types;
                 break;
             case SECTION_TYPE_CUSTOM: // Ignore.
                 break;
@@ -739,7 +739,7 @@ module_t *parse(FILE *input_file) {
                 module->imports = section.import_section.imports;
                 break;
             case SECTION_TYPE_FUNCTION:
-                module->types = section.type_section.types;
+                function_section = section.function_section;
                 break;
             case SECTION_TYPE_TABLE:
                 module->tables = section.table_section.tables;
