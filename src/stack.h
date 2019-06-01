@@ -19,6 +19,8 @@ typedef struct stack_t {
 
 void stack_init(stack *s, uint32_t size);
 
+bool stack_is_empty(stack *s);
+
 void push_i32(stack *s, i32 value);
 
 void push_i64(stack *s, i64 value);

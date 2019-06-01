@@ -13,6 +13,10 @@ void stack_init(stack *s, uint32_t size) {
     }
 }
 
+bool stack_is_empty(stack *s) {
+    return s->top == -1;
+}
+
 void push_i32(stack *s, int32_t value) {
     if (s->top >= (s->size - 1)) {
         fprintf(stderr, "tried to push onto full stack (location %d, size %d)\n", (s->top + 1), s->size);
