@@ -16,7 +16,18 @@ set_property(TARGET wasm_parser PROPERTY C_STANDARD 99)
 add_executable(wasm_interpreter
         src/parser.h
         src/main.c
-        )
+        src/interpreter.c
+        src/interpreter.h
+        src/stack.c
+        src/stack.h
+        src/numeric.c
+        src/numeric.h
+        src/list.c
+        src/list.h
+        src/memory.c
+        src/memory.h
+        src/variable.c
+        src/variable.h)
 set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
 
 target_link_libraries(wasm_interpreter wasm_parser)
