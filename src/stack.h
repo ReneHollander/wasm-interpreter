@@ -4,11 +4,16 @@
 #ifndef WASM_INTERPRETER_STACK_H
 #define WASM_INTERPRETER_STACK_H
 
-typedef union entry_t {
-    int64_t i64;
-    int32_t i32;
+typedef union value {
+    i64 i64;
+    i32 i32;
     f32 f32;
     f64 f64;
+} value_t;
+
+typedef struct entry_t {
+    value_t value;
+    valtype_t valtype;
 } entry;
 
 typedef struct stack_t {

@@ -24,7 +24,8 @@ void push_i32(stack *s, int32_t value) {
     }
 
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
-    (**(s->entry + s->top)).i32 = value;
+    (**(s->entry + s->top)).value.i32 = value;
+    (**(s->entry + s->top)).valtype = VALTYPE_I32;
 }
 
 void push_i64(stack *s, int64_t value) {
@@ -34,7 +35,8 @@ void push_i64(stack *s, int64_t value) {
     }
 
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
-    (**(s->entry + s->top)).i64 = value;
+    (**(s->entry + s->top)).value.i64 = value;
+    (**(s->entry + s->top)).valtype = VALTYPE_I64;
 }
 
 void push_f32(stack *s, f32 value) {
@@ -44,7 +46,8 @@ void push_f32(stack *s, f32 value) {
     }
 
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
-    (**(s->entry + s->top)).f32 = value;
+    (**(s->entry + s->top)).value.f32 = value;
+    (**(s->entry + s->top)).valtype = VALTYPE_F32;
 }
 
 void push_f64(stack *s, f64 value) {
@@ -54,7 +57,8 @@ void push_f64(stack *s, f64 value) {
     }
 
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
-    (**(s->entry + s->top)).f64 = value;
+    (**(s->entry + s->top)).value.f64 = value;
+    (**(s->entry + s->top)).valtype = VALTYPE_F64;
 }
 
 i32 pop_i32(stack *s) {
@@ -63,7 +67,7 @@ i32 pop_i32(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).i32;
+    return (**(s->entry + (s->top--))).value.i32;
 }
 
 i64 pop_i64(stack *s) {
@@ -72,7 +76,7 @@ i64 pop_i64(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).i64;
+    return (**(s->entry + (s->top--))).value.i64;
 }
 
 f32 pop_f32(stack *s) {
@@ -81,7 +85,7 @@ f32 pop_f32(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).f32;
+    return (**(s->entry + (s->top--))).value.f32;
 }
 
 f64 pop_f64(stack *s) {
@@ -90,7 +94,7 @@ f64 pop_f64(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).f64;
+    return (**(s->entry + (s->top--))).value.f64;
 }
 
 i32 peek_i32(stack *s) {
@@ -99,7 +103,7 @@ i32 peek_i32(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top))).i32;
+    return (**(s->entry + (s->top))).value.i32;
 }
 
 i64 peek_i64(stack *s) {
@@ -108,7 +112,7 @@ i64 peek_i64(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top))).i64;
+    return (**(s->entry + (s->top))).value.i64;
 }
 
 f32 peek_f32(stack *s) {
@@ -117,7 +121,7 @@ f32 peek_f32(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top))).f32;
+    return (**(s->entry + (s->top))).value.f32;
 }
 
 f64 peek_f64(stack *s) {
@@ -126,7 +130,7 @@ f64 peek_f64(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top))).f64;
+    return (**(s->entry + (s->top))).value.f64;
 }
 
 void destroy(stack *s) {
