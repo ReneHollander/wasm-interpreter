@@ -50,4 +50,8 @@ f32 peek_f32(stack *s);
 
 f64 peek_f64(stack *s);
 
+void drop(stack *s);
+
+void destroy(stack *s);
+
 #endif //WASM_INTERPRETER_STACK_H

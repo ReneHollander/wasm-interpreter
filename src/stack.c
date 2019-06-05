@@ -17,7 +17,7 @@ bool stack_is_empty(stack *s) {
     return s->top == -1;
 }
 
-void push_i32(stack *s, int32_t value) {
+void push_i32(stack *s, i32 value) {
     if (s->top >= (s->size - 1)) {
         fprintf(stderr, "tried to push onto full stack (location %d, size %d)\n", (s->top + 1), s->size);
         exit(EXIT_FAILURE);
@@ -28,7 +28,7 @@ void push_i32(stack *s, int32_t value) {
     (**(s->entry + s->top)).valtype = VALTYPE_I32;
 }
 
-void push_i64(stack *s, int64_t value) {
+void push_i64(stack *s, i64 value) {
     if (s->top >= (s->size - 1)) {
         fprintf(stderr, "tried to push onto full stack (location %d, size %d)\n", (s->top + 1), s->size);
         exit(EXIT_FAILURE);
@@ -61,13 +61,25 @@ void push_f64(stack *s, f64 value) {
     (**(s->entry + s->top)).valtype = VALTYPE_F64;
 }
 
+void drop(stack *s) {
+    if (s->top <= -1) {
+        fprintf(stderr, "tried to drop from empty stack (location %d)\n", (s->top));
+        exit(EXIT_FAILURE);
+    }
+
+    free(*(s->entry + s->top--));
+}
+
 i32 pop_i32(stack *s) {
     if (s->top <= -1) {
         fprintf(stderr, "tried to pop from empty stack (location %d)\n", (s->top));
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).value.i32;
+    i32 val = (**(s->entry + (s->top))).value.i32;
+    free(*(s->entry + s->top--));
+
+    return val;
 }
 
 i64 pop_i64(stack *s) {
@@ -76,7 +88,10 @@ i64 pop_i64(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).value.i64;
+    i64 val = (**(s->entry + (s->top))).value.i64;
+    free(*(s->entry + s->top--));
+
+    return val;
 }
 
 f32 pop_f32(stack *s) {
@@ -85,7 +100,10 @@ f32 pop_f32(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).value.f32;
+    f32 val = (**(s->entry + (s->top))).value.f32;
+    free(*(s->entry + s->top--));
+
+    return val;
 }
 
 f64 pop_f64(stack *s) {
@@ -94,7 +112,10 @@ f64 pop_f64(stack *s) {
         exit(EXIT_FAILURE);
     }
 
-    return (**(s->entry + (s->top--))).value.f64;
+    f64 val = (**(s->entry + (s->top))).value.f64;
+    free(*(s->entry + s->top--));
+
+    return val;
 }
 
 i32 peek_i32(stack *s) {
@@ -134,5 +155,5 @@ f64 peek_f64(stack *s) {
 }
 
 void destroy(stack *s) {
-    //TODO free memory of stack
+    free(s->entry);
 }
