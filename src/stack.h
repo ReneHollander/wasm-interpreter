@@ -1,5 +1,6 @@
 #include<stdbool.h>
 #include "type.h"
+#include "control.h"
 
 #ifndef WASM_INTERPRETER_STACK_H
 #define WASM_INTERPRETER_STACK_H
@@ -11,9 +12,16 @@ typedef union value {
     f64 f64;
 } value_t;
 
+typedef enum type {
+    LABEL,              //marker for labels
+    VALUE,              //marker for values
+    FUNCTION            //marker for function calls
+} type_t;
+
 typedef struct entry_t {
     value_t value;
     valtype_t valtype;
+    type_t type;
 } entry;
 
 typedef struct stack_t {
@@ -49,6 +57,14 @@ i64 peek_i64(stack *s);
 f32 peek_f32(stack *s);
 
 f64 peek_f64(stack *s);
+
+void push_label(stack *s);
+
+bool pop_label(stack *s);
+
+void push_func_marker(stack *s);
+
+bool pop_func_marker(stack *s);
 
 void drop(stack *s);
 

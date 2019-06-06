@@ -4,6 +4,7 @@
 #include "type.h"
 #include "instruction.h"
 #include "list.h"
+#include "module.h"
 
 typedef union val {
     i32 i32;
@@ -15,84 +16,46 @@ typedef union val {
 typedef struct global_entry {
     val_t val;
     valtype_t valtype;
-    uint32_t idx;
 } global_entry_t;
 
 typedef struct local_entry {
     val_t val;
     valtype_t valtype;
-    uint32_t idx;
 } local_entry_t;
 
+typedef enum context {
+    FUNCTION_CONTEXT,
+    CONTROL_CONTEXT
+} context_t;
+
 typedef struct frame {
-    node_t *locals;
-    node_t *params;
+    node_t *locals;                 //parameters followed by local variables
+    uint32_t ip;                    //index of the next instruction to be executed
+    vec_instruction_t *instrs;      //pointer to the vector of instructions
+    uint32_t arity;                 //number of result arguments (<= 1)
+    context_t context;              /*indicates whether this is a stack frame used for function calls
+                                        or a control frame used for control operations*/
+    valtype_t result_type;          //type of result (if any)
 } frame_t;
 
 bool is_variable_instr(opcode_t opcode);
 
+void eval_variable_instr(instruction_t instr);
+
+void init_globals(vec_global_t *_globals);
+
+void init_locals(vec_locals_t *locals);
+
+void init_params(vec_valtype_t *params);
+
 /* frame operations */
-void push_frame(void);
+void push_frame(vec_instruction_t *instrs, uint32_t arity, valtype_t result_type, context_t context);
 
 void pop_frame(void);
 
 frame_t *peek_frame(void);
 
-/* local operations */
-void insert_local_i32(i32 val);
 
-i32 get_local_i32(localidx idx);
-
-void set_local_i32(localidx idx, i32 val);
-
-void insert_local_i64(i64 val);
-
-i64 get_local_i64(localidx idx);
-
-void set_local_i64(localidx idx, i64 val);
-
-void insert_local_f32(f32 val);
-
-f32 get_local_f32(localidx idx);
-
-void set_local_f32(localidx idx, f32 val);
-
-void insert_local_f64(f64 val);
-
-f64 get_local_f64(localidx idx);
-
-void set_local_f64(localidx idx, f64 val);
-
-valtype_t get_local_valtype(localidx idx);
-
-valtype_t get_param_valtype(localidx idx);
-
-/* global operations */
-void insert_global_i32(i32 val);
-
-i32 get_global_i32(globalidx idx);
-
-void set_global_i32(globalidx idx, i32 val);
-
-void insert_global_i64(i64 val);
-
-i64 get_global_i64(globalidx idx);
-
-void set_global_i64(globalidx idx, i64 val);
-
-void insert_global_f32(f32 val);
-
-f32 get_global_f32(globalidx idx);
-
-void set_global_f32(globalidx idx, f32 val);
-
-void insert_global_f64(f64 val);
-
-f64 get_global_f64(globalidx idx);
-
-void set_global_f64(globalidx idx, f64 val);
-
-valtype_t get_global_valtype(globalidx idx);
 
 /* **************** */
 

@@ -40,9 +40,8 @@ void *get_at(node_t **head_ref, uint32_t idx) {
         }
         cur = cur->next;
     }
-
-    fprintf(stderr, "tried to get element at non-existent list position %d\n", idx);
-    exit(EXIT_FAILURE);
+    
+    return NULL;
 }
 
 size_t length(node_t **head_ref) {

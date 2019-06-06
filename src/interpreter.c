@@ -9,78 +9,27 @@
 #include "memory.h"
 #include "variable.h"
 #include "control.h"
+#include "opd_stack.h"
 
 static void init(void);
 
-static void init_globals(vec_global_t *globals);
+static void eval_parametric_instr(instruction_t instr);
 
-static void init_global(global_t global);
+static void eval_global_expr(expression_t expr);
 
-static void init_locals(vec_locals_t *locals);
+static void eval_global_instrs(vec_instruction_t *instructions);
 
-static void init_local(locals_t local);
+static bool is_parametric_instr(opcode_t opcode);
 
-static void init_params(vec_valtype_t *params);
+static void pop_result(valtype_t result_type, val_t *val);
 
-static void init_param(valtype_t param);
-
-static void call_func(func_t func);
-
-static void eval_expr(expression_t expr);
-
-static void eval_instr(instruction_t instr);
-
-static void eval_instrs(vec_instruction_t *instructions);
-
-static void eval_numeric_instr(instruction_t instr);
-
-static void eval_variable_instr(instruction_t instr);
-
-static void eval_control_instr(instruction_t instr);
-
-static void eval_local_get(localidx idx);
-
-static void eval_local_set(localidx idx);
-
-static void eval_local_tee(localidx idx);
-
-static void eval_global_get(localidx idx);
-
-static void eval_global_set(localidx idx);
-
-static i32 pop_opd_i32(void);
-
-static i64 pop_opd_i64(void);
-
-static f32 pop_opd_f32(void);
-
-static f64 pop_opd_f64(void);
-
-static void push_opd_i32(i32 val);
-
-static void push_opd_i64(i64 val);
-
-static void push_opd_f32(f32 val);
-
-static void push_opd_f64(f64 val);
-
-static i32 peek_opd_i32();
-
-static i64 peek_opd_i64();
-
-static f32 peek_opd_f32();
-
-static f64 peek_opd_f64();
+static void push_result(valtype_t result_type, val_t *val);
 
 static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name);
 
-static void interpreter_error(char *err_message);
-
 static void print_result(func_t func);
 
-static stack opd_stack;
-
-static module_t *module_global;
+static instruction_t *fetch_next_instr(void);
 
 /* Intended to call the start function of the module - not yet implemented */
 void interpret(module_t *module) {
@@ -139,10 +88,10 @@ static void print_result(func_t func) {
                 break;
             default:
                 fprintf(stderr, "unknown result valtype: %d\n", valtype);
-                exit(EXIT_FAILURE);
+                interpreter_exit();
         }
     } else if (fun_output->length > 1) {
-        interpreter_error("more than one result type is not supported currently\n");
+        interpreter_error("more than one result is not supported currently\n");
     }
 }
 
@@ -150,107 +99,6 @@ static void init(void) {
     stack_init(&opd_stack, 1000);
 
     init_globals(module_global->globals);
-}
-
-static void call_func(func_t func) {
-    push_frame();
-
-    //first we init the locals and afterwards the params because we want the params to come first in the list
-    init_locals(func.locals);
-    init_params(module_global->types->values[func.type].t1);
-    eval_expr(func.expression);
-
-    pop_frame();
-}
-
-static void init_params(vec_valtype_t *params) {
-    //insert in reverse order so we have them in the correct order within the list
-    for (int i = params->length - 1; i >= 0; i--) {
-        init_param(params->values[i]);
-    }
-}
-
-static void init_param(valtype_t param_valtype) {
-    //we consume the function params from the stack here
-    switch (param_valtype) {
-        case VALTYPE_I32:
-            insert_local_i32(pop_opd_i32());
-            break;
-        case VALTYPE_I64:
-            insert_local_i64(pop_opd_i64());
-            break;
-        case VALTYPE_F32:
-            insert_local_f32(pop_opd_f32());
-            break;
-        case VALTYPE_F64:
-            insert_local_f64(pop_opd_f64());
-            break;
-        default:
-            exit(EXIT_FAILURE);
-    }
-}
-
-static void init_locals(vec_locals_t *locals) {
-    //insert in reverse order so we have them in the correct order within the list
-    for (int i = locals->length - 1; i >= 0; i--) {
-        init_local(locals->values[i]);
-    }
-}
-
-static void init_local(locals_t local) {
-    for (int i = 0; i < local.n; i++) {
-        switch (local.t) {
-            case VALTYPE_I32:
-                insert_local_i32(0);
-                break;
-            case VALTYPE_I64:
-                insert_local_i64(0);
-                break;
-            case VALTYPE_F32:
-                insert_local_f32(0);
-                break;
-            case VALTYPE_F64:
-                insert_local_f64(0);
-                break;
-            default:
-                fprintf(stderr, "unknown valtype for local: %d\n", local.t);
-                exit(EXIT_FAILURE);
-        }
-    }
-}
-
-static void init_globals(vec_global_t *globals) {
-    if (globals == NULL) {
-        return;
-    }
-
-    //insert in reverse order so we have them in the correct order within the list
-    for (int i = globals->length - 1; i >= 0; i--) {
-        init_global(globals->values[i]);
-    }
-}
-
-static void init_global(global_t global) {
-    eval_expr(global.e);
-
-    //the result of the expression should be on the operand stack now, so we can consume it
-    switch (global.gt.t) {
-        case VALTYPE_I32:
-            insert_global_i32(pop_opd_i32());
-            break;
-        case VALTYPE_I64:
-            insert_global_i64(pop_opd_i64());
-            break;
-        case VALTYPE_F32:
-            insert_global_f32(pop_opd_f32());
-            break;
-        case VALTYPE_F64:
-            insert_global_f64(pop_opd_f64());
-            break;
-        default:
-            fprintf(stderr, "unknown global valtype: %X", global.gt.t);
-            exit(EXIT_FAILURE);
-    }
 }
 
 static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name) {
@@ -265,25 +113,40 @@ static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_nam
 
     if (idx == -1) {
         fprintf(stderr, "could not find function with name: %s in exports\n", func_name);
-        exit(EXIT_FAILURE);
+        interpreter_exit();
     }
 
     return funcs->values[idx];
 }
 
-static void eval_expr(expression_t expr) {
-    eval_instrs(expr.instructions);
-}
+void eval_instrs(void) {
+    instruction_t *instr;
 
-static void eval_instrs(vec_instruction_t *instructions) {
-    u32 length = instructions->length;
-
-    for (int i = 0; i < length; i++) {
-        eval_instr(instructions->values[i]);
+    while ((instr = fetch_next_instr()) != NULL) {
+        eval_instr(*instr);
     }
 }
 
-static void eval_instr(instruction_t instr) {
+static instruction_t *fetch_next_instr(void) {
+    frame_t *frame;
+
+    while ((frame = peek_frame()) != NULL) {
+        //if the ip is past the last instruction - clean all but the result argument and pop the frame
+        if (frame->ip >= frame->instrs->length) {
+            if (frame->context == FUNCTION_CONTEXT) {
+                clean_to_func_marker();
+            } else if (frame->context == CONTROL_CONTEXT) {
+                clean_to_label();
+            }
+            pop_frame();
+            continue;
+        }
+
+        return &frame->instrs->values[frame->ip++];
+    }
+}
+
+void eval_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     if (is_numeric_instr(opcode)) {
@@ -292,344 +155,45 @@ static void eval_instr(instruction_t instr) {
         eval_variable_instr(instr);
     } else if (is_control_instr(opcode)) {
         eval_control_instr(instr);
+    } else if (is_parametric_instr(opcode)) {
+        eval_parametric_instr(instr);
     } else {
-        fprintf(stderr, "not yet implemented (opcode %x)\n", opcode);
-        exit(EXIT_FAILURE);
-    }
-
-}
-
-static void eval_control_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
-
-    if (opcode == OP_CALL) {
-        func_t func = module_global->funcs->values[instr.funcidx];
-        call_func(func);
+        fprintf(stderr, "not yet implemented instruction (opcode %x)\n", opcode);
+        interpreter_exit();
     }
 }
 
-static void eval_numeric_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
-
-    if (opcode == OP_I32_CONST) {
-        push_opd_i32(instr.const_i32);
-    } else if (opcode == OP_I64_CONST) {
-        push_opd_i64(instr.const_i64);
-    } else if (opcode == OP_F32_CONST) {
-        push_opd_f32(instr.const_f32);
-    } else if (opcode == OP_F64_CONST) {
-        push_opd_f64(instr.const_f64);
-    } else if (opcode == OP_F32_ADD) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(add_f32(op1, op2));
-    } else if (opcode == OP_F64_ADD) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(add_f64(op1, op2));
-    } else if (opcode == OP_I32_ADD) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(add_i32(op1, op2));
-    } else if (opcode == OP_I64_ADD) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(add_i64(op1, op2));
-    } else if (opcode == OP_F32_SUB) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(sub_f32(op1, op2));
-    } else if (opcode == OP_F64_SUB) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(sub_f64(op1, op2));
-    } else if (opcode == OP_I32_SUB) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(sub_i32(op1, op2));
-    } else if (opcode == OP_I64_SUB) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(sub_i64(op1, op2));
-    } else if (opcode == OP_F32_MUL) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(mul_f32(op1, op2));
-    } else if (opcode == OP_F64_MUL) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(mul_f64(op1, op2));
-    } else if (opcode == OP_I32_MUL) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(mul_i32(op1, op2));
-    } else if (opcode == OP_I64_MUL) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(mul_i64(op1, op2));
-    } else if (opcode == OP_F32_MIN) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(min_f32(op1, op2));
-    } else if (opcode == OP_F64_MIN) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(min_f64(op1, op2));
-    } else if (opcode == OP_F32_MAX) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(max_f32(op1, op2));
-    } else if (opcode == OP_F64_MAX) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(max_f64(op1, op2));
-    } else if (opcode == OP_F32_SQRT) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(sqrt_f32(op));
-    } else if (opcode == OP_F64_SQRT) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(sqrt_f64(op));
-    } else if (opcode == OP_F32_FLOOR) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(floor_f32(op));
-    } else if (opcode == OP_F64_FLOOR) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(floor_f64(op));
-    } else if (opcode == OP_F32_CEIL) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(ceil_f32(op));
-    } else if (opcode == OP_F64_CEIL) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(ceil_f64(op));
-    } else if (opcode == OP_F32_ABS) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(abs_f32(op));
-    } else if (opcode == OP_F64_ABS) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(abs_f64(op));
-    } else if (opcode == OP_F32_NEG) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(neg_f32(op));
-    } else if (opcode == OP_F64_NEG) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(neg_f64(op));
-    } else if (opcode == OP_I32_OR) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(or_i32(op1, op2));
-    } else if (opcode == OP_I64_OR) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(or_i64(op1, op2));
-    } else if (opcode == OP_I32_XOR) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(xor_i32(op1, op2));
-    } else if (opcode == OP_I64_XOR) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(xor_i64(op1, op2));
-    } else if (opcode == OP_I32_AND) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(and_i32(op1, op2));
-    } else if (opcode == OP_I64_AND) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(and_i64(op1, op2));
-    } else {
-        fprintf(stderr, "numeric instruction with opcode %X currently not supported\n", opcode);
-        exit(EXIT_FAILURE);
+static bool is_parametric_instr(opcode_t opcode) {
+    switch (opcode) {
+        case OP_DROP:
+        case OP_SELECT:
+            return true;
+        default:
+            return false;
     }
 }
 
-static void eval_variable_instr(instruction_t instr) {
+static void eval_parametric_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     switch (opcode) {
-        case OP_LOCAL_GET:
-            eval_local_get(instr.localidx);
+        case OP_DROP:
+            drop(&opd_stack);
             break;
-        case OP_LOCAL_SET:
-            eval_local_set(instr.localidx);
-            break;
-        case OP_LOCAL_TEE:
-            eval_local_tee(instr.localidx);
-            break;
-        case OP_GLOBAL_GET:
-            eval_global_get(instr.globalidx);
-            break;
-        case OP_GLOBAL_SET:
-            eval_global_set(instr.globalidx);
+        case OP_SELECT:
             break;
         default:
-            fprintf(stderr, "variable instruction with opcode %X currently not supported\n", opcode);
-            exit(EXIT_FAILURE);
+            fprintf(stderr, "not yet implemented parametric instruction (opcode %x)\n", opcode);
+            interpreter_exit();
     }
 }
 
-static void eval_local_get(localidx idx) {
-    valtype_t valtype = get_local_valtype(idx);
-
-    switch (valtype) {
-        case VALTYPE_I32:
-            push_opd_i32(get_local_i32(idx));
-            break;
-        case VALTYPE_I64:
-            push_opd_i64(get_local_i64(idx));
-            break;
-        case VALTYPE_F32:
-            push_opd_f32(get_local_f32(idx));
-            break;
-        case VALTYPE_F64:
-            push_opd_f64(get_local_f64(idx));
-            break;
-        default:
-            fprintf(stderr, "unknown local valtype: %X\n", valtype);
-            exit(EXIT_FAILURE);
-    }
-}
-
-static void eval_local_set(localidx idx) {
-    valtype_t valtype = get_local_valtype(idx);
-
-    switch (valtype) {
-        case VALTYPE_I32:
-            set_local_i32(idx, pop_opd_i32());
-            break;
-        case VALTYPE_I64:
-            set_local_i64(idx, pop_opd_i64());
-            break;
-        case VALTYPE_F32:
-            set_local_f32(idx, pop_opd_f32());
-            break;
-        case VALTYPE_F64:
-            set_local_f64(idx, pop_opd_f64());
-            break;
-        default:
-            fprintf(stderr, "unknown local valtype: %X\n", valtype);
-            exit(EXIT_FAILURE);
-    }
-}
-
-static void eval_local_tee(localidx idx) {
-    valtype_t valtype = get_local_valtype(idx);
-
-    switch (valtype) {
-        case VALTYPE_I32:
-            set_local_i32(idx, peek_opd_i32());
-            break;
-        case VALTYPE_I64:
-            set_local_i64(idx, peek_opd_i64());
-            break;
-        case VALTYPE_F32:
-            set_local_f32(idx, peek_opd_f32());
-            break;
-        case VALTYPE_F64:
-            set_local_f64(idx, peek_opd_f64());
-            break;
-        default:
-            fprintf(stderr, "unknown local valtype: %X\n", valtype);
-            exit(EXIT_FAILURE);
-    }
-}
-
-static void eval_global_get(localidx idx) {
-    valtype_t valtype = get_global_valtype(idx);
-
-    switch (valtype) {
-        case VALTYPE_I32:
-            push_opd_i32(get_global_i32(idx));
-            break;
-        case VALTYPE_I64:
-            push_opd_i64(get_global_i64(idx));
-            break;
-        case VALTYPE_F32:
-            push_opd_f32(get_global_f32(idx));
-            break;
-        case VALTYPE_F64:
-            push_opd_f64(get_global_f64(idx));
-            break;
-        default:
-            fprintf(stderr, "unknown global valtype: %X\n", valtype);
-            exit(EXIT_FAILURE);
-    }
-}
-
-static void eval_global_set(localidx idx) {
-    valtype_t valtype = get_global_valtype(idx);
-
-    switch (valtype) {
-        case VALTYPE_I32:
-            set_global_i32(idx, pop_opd_i32());
-            break;
-        case VALTYPE_I64:
-            set_global_i64(idx, pop_opd_i64());
-            break;
-        case VALTYPE_F32:
-            set_global_f32(idx, pop_opd_f32());
-            break;
-        case VALTYPE_F64:
-            set_global_f64(idx, pop_opd_f64());
-            break;
-        default:
-            fprintf(stderr, "unknown global valtype: %X\n", valtype);
-            exit(EXIT_FAILURE);
-    }
-}
-
-/* Some convenience functions defining operand stack operations */
-static i32 pop_opd_i32(void) {
-    return pop_i32(&opd_stack);
-}
-
-static i64 pop_opd_i64(void) {
-    return pop_i64(&opd_stack);
-}
-
-static f32 pop_opd_f32(void) {
-    return pop_f32(&opd_stack);
-}
-
-static f64 pop_opd_f64(void) {
-    return pop_f64(&opd_stack);
-}
-
-static void push_opd_i32(i32 val) {
-    push_i32(&opd_stack, val);
-}
-
-static void push_opd_i64(i64 val) {
-    push_i64(&opd_stack, val);
-}
-
-static void push_opd_f32(f32 val) {
-    push_f32(&opd_stack, val);
-}
-
-static void push_opd_f64(f64 val) {
-    push_f64(&opd_stack, val);
-}
-
-static i32 peek_opd_i32() {
-    return peek_i32(&opd_stack);
-}
-
-static i64 peek_opd_i64() {
-    return peek_i64(&opd_stack);
-}
-
-static f32 peek_opd_f32() {
-    return peek_f32(&opd_stack);
-}
-
-static f64 peek_opd_f64() {
-    return peek_f64(&opd_stack);
-}
-
-/* **************************** */
-
-static void interpreter_error(char *err_message) {
+void interpreter_error(char *err_message) {
     fprintf(stderr, "%s\n", err_message);
+    interpreter_exit();
+}
+
+void interpreter_exit(void) {
+    destroy(&opd_stack);
     exit(EXIT_FAILURE);
 }
