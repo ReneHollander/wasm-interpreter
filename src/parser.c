@@ -104,23 +104,23 @@ static inline i64 next_i64() {
 
 static inline f32 next_f32() {
     f32 output;
-    *((byte *) (&output) + 3) = next_byte();
-    *((byte *) (&output) + 2) = next_byte();
-    *((byte *) (&output) + 1) = next_byte();
     *((byte *) (&output) + 0) = next_byte();
+    *((byte *) (&output) + 1) = next_byte();
+    *((byte *) (&output) + 2) = next_byte();
+    *((byte *) (&output) + 3) = next_byte();
     return output;
 }
 
 static inline f64 next_f64() {
     f64 output;
-    *((byte *) (&output) + 7) = next_byte();
-    *((byte *) (&output) + 6) = next_byte();
-    *((byte *) (&output) + 5) = next_byte();
-    *((byte *) (&output) + 4) = next_byte();
-    *((byte *) (&output) + 3) = next_byte();
-    *((byte *) (&output) + 2) = next_byte();
-    *((byte *) (&output) + 1) = next_byte();
     *((byte *) (&output) + 0) = next_byte();
+    *((byte *) (&output) + 1) = next_byte();
+    *((byte *) (&output) + 2) = next_byte();
+    *((byte *) (&output) + 3) = next_byte();
+    *((byte *) (&output) + 4) = next_byte();
+    *((byte *) (&output) + 5) = next_byte();
+    *((byte *) (&output) + 6) = next_byte();
+    *((byte *) (&output) + 7) = next_byte();
     return output;
 }
 
