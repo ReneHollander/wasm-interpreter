@@ -30,7 +30,8 @@ add_executable(wasm_interpreter
         src/variable.h
         src/control.c
         src/control.h
-        src/opd_stack.c src/opd_stack.h)
+        src/opd_stack.c
+        src/opd_stack.h)
 set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
 
 target_link_libraries(wasm_interpreter m wasm_parser)
