@@ -145,7 +145,7 @@ i32 le_f32(f32 op1, f32 op2);
 
 i32 ge_f32(f32 op1, f32 op2);
 
-i32 eq_f64(i64 op1, f64 op2);
+i32 eq_f64(f64 op1, f64 op2);
 
 i32 ne_f64(f64 op1, f64 op2);
 
@@ -787,7 +787,7 @@ i32 ge_f32(f32 op1, f32 op2) {
     return op1 >= op2 ? 1 : 0;
 }
 
-i32 eq_f64(i64 op1, f64 op2) {
+i32 eq_f64(f64 op1, f64 op2) {
     return op1 == op2 ? 1 : 0;
 }
 
