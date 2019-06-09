@@ -16,6 +16,12 @@ static void eval_br(instruction_t instr);
 
 static void eval_if(instruction_t instr);
 
+static void eval_br_if(instruction_t instr);
+
+static void eval_loop(instruction_t instr);
+
+static void eval_block(instruction_t instr);
+
 static void pop_result(valtype_t result_type, val_t *val);
 
 static void push_result(valtype_t result_type, val_t *val);
@@ -30,23 +36,15 @@ void eval_control_instr(instruction_t instr) {
     } else if (opcode == OP_UNREACHABLE) {
         interpreter_exit();
     } else if (opcode == OP_BLOCK) {
-        u32 arity = instr.block.resulttype.empty ? 0 : 1;
-        push_label(&opd_stack);
-        push_frame(instr.block.instructions, arity, instr.block.resulttype.type, CONTROL_CONTEXT);
+        eval_block(instr);
     } else if (opcode == OP_BR) {
         eval_br(instr);
     } else if (opcode == OP_BR_IF) {
-        i32 val = pop_opd_i32();
-
-        if (val != 0) {
-            eval_br(instr);
-        }
+        eval_br_if(instr);
     } else if (opcode == OP_IF) {
         eval_if(instr);
     } else if (opcode == OP_LOOP) {
-        u32 arity = instr.block.resulttype.empty ? 0 : 1;
-        push_label(&opd_stack);
-        push_frame(instr.block.instructions, arity, instr.block.resulttype.type, LOOP_CONTEXT);
+        eval_loop(instr);
     } else if (opcode == OP_RETURN) {
         eval_return();
     } else {
@@ -77,6 +75,26 @@ static void eval_return(void) {
             break;
         }
     }
+}
+
+static void eval_br_if(instruction_t instr) {
+    i32 val = pop_opd_i32();
+
+    if (val != 0) {
+        eval_br(instr);
+    }
+}
+
+static void eval_block(instruction_t instr) {
+    u32 arity = instr.block.resulttype.empty ? 0 : 1;
+    push_label(&opd_stack);
+    push_frame(instr.block.instructions, arity, instr.block.resulttype.type, CONTROL_CONTEXT);
+}
+
+static void eval_loop(instruction_t instr) {
+    u32 arity = instr.block.resulttype.empty ? 0 : 1;
+    push_label(&opd_stack);
+    push_frame(instr.block.instructions, arity, instr.block.resulttype.type, LOOP_CONTEXT);
 }
 
 static void eval_if(instruction_t instr) {
