@@ -14,6 +14,8 @@ static void eval_return(void);
 
 static void eval_br(instruction_t instr);
 
+static void eval_if(instruction_t instr);
+
 static void pop_result(valtype_t result_type, val_t *val);
 
 static void push_result(valtype_t result_type, val_t *val);
@@ -34,11 +36,17 @@ void eval_control_instr(instruction_t instr) {
     } else if (opcode == OP_BR) {
         eval_br(instr);
     } else if (opcode == OP_BR_IF) {
+        i32 val = pop_opd_i32();
 
+        if (val != 0) {
+            eval_br(instr);
+        }
     } else if (opcode == OP_IF) {
-
+        eval_if(instr);
     } else if (opcode == OP_LOOP) {
-
+        u32 arity = instr.block.resulttype.empty ? 0 : 1;
+        push_label(&opd_stack);
+        push_frame(instr.block.instructions, arity, instr.block.resulttype.type, LOOP_CONTEXT);
     } else if (opcode == OP_RETURN) {
         eval_return();
     } else {
@@ -48,13 +56,13 @@ void eval_control_instr(instruction_t instr) {
 }
 
 void call_func(func_t func) {
-    push_func_marker(&opd_stack);
     vec_valtype_t *fun_output = module_global->types->values[func.type].t2;
     push_frame(func.expression.instructions, fun_output->length, fun_output->values[0], FUNCTION_CONTEXT);
 
     //first we init the locals and afterwards the params because we want the params to come first in the list
     init_locals(func.locals);
     init_params(module_global->types->values[func.type].t1);
+    push_func_marker(&opd_stack);
     eval_instrs();
 }
 
@@ -71,6 +79,18 @@ static void eval_return(void) {
     }
 }
 
+static void eval_if(instruction_t instr) {
+    u32 arity = instr.if_block.resulttype.empty ? 0 : 1;
+    i32 val = pop_opd_i32();
+    push_label(&opd_stack);
+
+    if (val != 0) {
+        push_frame(instr.if_block.ifpath, arity, instr.if_block.resulttype.type, CONTROL_CONTEXT);
+    } else if (instr.if_block.elsepath != NULL) {
+        push_frame(instr.if_block.elsepath, arity, instr.if_block.resulttype.type, CONTROL_CONTEXT);
+    }
+}
+
 static void eval_br(instruction_t instr) {
     int32_t lbl_idx = instr.labelidx;
     frame_t *frame = peek_frame();
@@ -78,19 +98,25 @@ static void eval_br(instruction_t instr) {
     valtype_t result_type = frame->result_type;
     val_t val;
 
-    if (has_result) {
+    //loop jumps do not save result values
+    if (has_result && frame->context != LOOP_CONTEXT) {
         pop_result(result_type, &val);
     }
 
-    //pop control frames until index < 0
-    //for each frame pop the values from the operand stack
     while (lbl_idx >= 0) {
         while (!pop_label(&opd_stack));
-        pop_frame();
+        frame_t *current = peek_frame();
+
+        if (lbl_idx == 0 && current->context == LOOP_CONTEXT) {
+            push_label(&opd_stack);
+            current->ip = 0;
+        } else {
+            pop_frame();
+        }
         lbl_idx--;
     }
 
-    if (has_result) {
+    if (has_result && frame->context != LOOP_CONTEXT) {
         push_result(result_type, &val);
     }
 }

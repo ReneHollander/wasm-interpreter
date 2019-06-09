@@ -135,7 +135,7 @@ static instruction_t *fetch_next_instr(void) {
         if (frame->ip >= frame->instrs->length) {
             if (frame->context == FUNCTION_CONTEXT) {
                 clean_to_func_marker();
-            } else if (frame->context == CONTROL_CONTEXT) {
+            } else if (frame->context == CONTROL_CONTEXT || frame->context == LOOP_CONTEXT) {
                 clean_to_label();
             }
             pop_frame();
