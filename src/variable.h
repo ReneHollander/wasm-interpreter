@@ -25,7 +25,8 @@ typedef struct local_entry {
 
 typedef enum context {
     FUNCTION_CONTEXT,
-    CONTROL_CONTEXT
+    CONTROL_CONTEXT,
+    LOOP_CONTEXT
 } context_t;
 
 typedef struct frame {
@@ -33,8 +34,8 @@ typedef struct frame {
     uint32_t ip;                    //index of the next instruction to be executed
     vec_instruction_t *instrs;      //pointer to the vector of instructions
     uint32_t arity;                 //number of result arguments (<= 1)
-    context_t context;              /*indicates whether this is a stack frame used for function calls
-                                        or a control frame used for control operations*/
+    context_t context;              /*indicates whether this is a stack frame used for function calls,
+                                        or a control frame used for control operations, or a loop frame */
     valtype_t result_type;          //type of result (if any)
 } frame_t;
 
@@ -54,8 +55,6 @@ void push_frame(vec_instruction_t *instrs, uint32_t arity, valtype_t result_type
 void pop_frame(void);
 
 frame_t *peek_frame(void);
-
-
 
 /* **************** */
 

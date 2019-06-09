@@ -10,6 +10,8 @@
 #include "interpreter.h"
 #include "opd_stack.h"
 
+static frame_t *peek_func_frame(void);
+
 static void init_param(valtype_t param_valtype);
 
 static void init_local(locals_t local);
@@ -342,7 +344,7 @@ bool is_variable_instr(opcode_t opcode) {
 }
 
 static valtype_t get_local_valtype(localidx idx) {
-    frame_t *frame = peek_frame();
+    frame_t *frame = peek_func_frame();
 
     if (idx >= length(&frame->locals)) {
         fprintf(stderr, "accessed invalid local index: %d\n", idx);
@@ -384,10 +386,24 @@ frame_t *peek_frame(void) {
     return (frame_t *) get_at(&frames, 0);
 }
 
+static frame_t *peek_func_frame(void) {
+    node_t *cur = frames;
+
+    for (int i = 0; cur != NULL; i++) {
+        if (((frame_t *) cur->data)->context == FUNCTION_CONTEXT) {
+            return cur->data;
+        }
+
+        cur = cur->next;
+    }
+
+    return NULL;
+}
+
 /* Local operations start here */
 
 void insert_local_i32(i32 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t local;
     local.val.i32 = val;
     local.valtype = VALTYPE_I32;
@@ -395,20 +411,20 @@ void insert_local_i32(i32 val) {
 }
 
 i32 get_local_i32(localidx idx) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     return local->val.i32;
 }
 
 void set_local_i32(localidx idx, i32 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     local->val.i32 = val;
 }
 
 
 void insert_local_i64(i64 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t local;
     local.val.i64 = val;
     local.valtype = VALTYPE_I64;
@@ -416,20 +432,20 @@ void insert_local_i64(i64 val) {
 }
 
 i64 get_local_i64(localidx idx) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     return local->val.i64;
 }
 
 void set_local_i64(localidx idx, i64 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     local->val.i64 = val;
 }
 
 
 void insert_local_f32(f32 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t local;
     local.val.f32 = val;
     local.valtype = VALTYPE_F32;
@@ -437,20 +453,20 @@ void insert_local_f32(f32 val) {
 }
 
 f32 get_local_f32(localidx idx) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     return local->val.f32;
 }
 
 void set_local_f32(localidx idx, f32 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     local->val.f32 = val;
 }
 
 
 void insert_local_f64(f64 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t local;
     local.val.f64 = val;
     local.valtype = VALTYPE_F64;
@@ -458,13 +474,13 @@ void insert_local_f64(f64 val) {
 }
 
 f64 get_local_f64(localidx idx) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     return local->val.f64;
 }
 
 void set_local_f64(localidx idx, f64 val) {
-    frame_t *current = peek_frame();
+    frame_t *current = peek_func_frame();
     local_entry_t *local = get_at(&current->locals, idx);
     local->val.f64 = val;
 }
