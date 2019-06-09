@@ -87,6 +87,7 @@
     )
 )
 
+;; computes the factorial
 (func (export "factorial") (param i64) (result i64)
     (get_local 0)
     (i64.const 0)
@@ -105,6 +106,8 @@
      )
 )
 
+;; calls the factorial function with argument 5
+;; expected result: 120
 (func (export "call-factorial") (result i64)
     (i64.const 5)
     (call 10)

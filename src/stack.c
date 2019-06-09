@@ -1,10 +1,10 @@
 #include <stdlib.h>
-#include<stdio.h>
+#include <stdio.h>
 #include "stack.h"
 
-void validate_push(stack *s);
+static void validate_push(stack *s);
 
-void validate_pop(stack *s);
+static void validate_pop(stack *s);
 
 void stack_init(stack *s, uint32_t size) {
     s->top = -1;
@@ -155,18 +155,24 @@ f64 peek_f64(stack *s) {
     return (**(s->entry + (s->top))).value.f64;
 }
 
+valtype_t peek_valtype(stack *s) {
+    validate_pop(s);
+
+    return (**(s->entry + (s->top))).valtype;
+}
+
 void destroy(stack *s) {
     free(s->entry);
 }
 
-void validate_push(stack *s) {
+static void validate_push(stack *s) {
     if (s->top >= (s->size - 1)) {
         fprintf(stderr, "tried to push onto full stack (location %d, size %d)\n", (s->top + 1), s->size);
         exit(EXIT_FAILURE);
     }
 }
 
-void validate_pop(stack *s) {
+static void validate_pop(stack *s) {
     if (s->top <= -1) {
         fprintf(stderr, "tried to pop/peek at empty stack (location %d)\n", (s->top));
         exit(EXIT_FAILURE);

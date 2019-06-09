@@ -3,6 +3,11 @@
 
 #include "instruction.h"
 #include "stack.h"
+#include "variable.h"
+
+void pop_generic(valtype_t result_type, val_t *val);
+
+void push_generic(valtype_t result_type, val_t *val);
 
 i32 pop_opd_i32(void);
 

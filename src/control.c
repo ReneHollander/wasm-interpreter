@@ -22,10 +22,6 @@ static void eval_loop(instruction_t instr);
 
 static void eval_block(instruction_t instr);
 
-static void pop_result(valtype_t result_type, val_t *val);
-
-static void push_result(valtype_t result_type, val_t *val);
-
 void eval_control_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
@@ -118,7 +114,7 @@ static void eval_br(instruction_t instr) {
 
     //loop jumps do not save result values
     if (has_result && frame->context != LOOP_CONTEXT) {
-        pop_result(result_type, &val);
+        pop_generic(result_type, &val);
     }
 
     while (lbl_idx >= 0) {
@@ -135,7 +131,7 @@ static void eval_br(instruction_t instr) {
     }
 
     if (has_result && frame->context != LOOP_CONTEXT) {
-        push_result(result_type, &val);
+        push_generic(result_type, &val);
     }
 }
 
@@ -164,13 +160,13 @@ void clean_to_func_marker() {
     val_t val;
 
     if (has_result) {
-        pop_result(frame->result_type, &val);
+        pop_generic(frame->result_type, &val);
     }
 
     while (!pop_func_marker(&opd_stack));
 
     if (has_result) {
-        push_result(frame->result_type, &val);
+        push_generic(frame->result_type, &val);
     }
 }
 
@@ -180,52 +176,12 @@ void clean_to_label() {
     val_t val;
 
     if (has_result) {
-        pop_result(frame->result_type, &val);
+        pop_generic(frame->result_type, &val);
     }
 
     while (!pop_label(&opd_stack));
 
     if (has_result) {
-        push_result(frame->result_type, &val);
-    }
-}
-
-static void pop_result(valtype_t result_type, val_t *val) {
-    switch (result_type) {
-        case VALTYPE_I32:
-            val->i32 = pop_i32(&opd_stack);
-            break;
-        case VALTYPE_F64:
-            val->f64 = pop_f64(&opd_stack);
-            break;
-        case VALTYPE_I64:
-            val->i64 = pop_i64(&opd_stack);
-            break;
-        case VALTYPE_F32:
-            val->f32 = pop_f32(&opd_stack);
-            break;
-        default:
-            fprintf(stderr, "unknown return valtype");
-            interpreter_exit();
-    }
-}
-
-static void push_result(valtype_t result_type, val_t *val) {
-    switch (result_type) {
-        case VALTYPE_I32:
-            push_i32(&opd_stack, val->i32);
-            break;
-        case VALTYPE_F64:
-            push_f64(&opd_stack, val->f64);
-            break;
-        case VALTYPE_I64:
-            push_i64(&opd_stack, val->i64);
-            break;
-        case VALTYPE_F32:
-            push_f32(&opd_stack, val->f32);
-            break;
-        default:
-            fprintf(stderr, "unknown return valtype");
-            interpreter_exit();
+        push_generic(frame->result_type, &val);
     }
 }

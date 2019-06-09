@@ -21,9 +21,7 @@ static void eval_global_instrs(vec_instruction_t *instructions);
 
 static bool is_parametric_instr(opcode_t opcode);
 
-static void pop_result(valtype_t result_type, val_t *val);
-
-static void push_result(valtype_t result_type, val_t *val);
+static void eval_select(void);
 
 static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name);
 
@@ -176,15 +174,28 @@ static bool is_parametric_instr(opcode_t opcode) {
 static void eval_parametric_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
-    switch (opcode) {
-        case OP_DROP:
-            drop(&opd_stack);
-            break;
-        case OP_SELECT:
-            break;
-        default:
-            fprintf(stderr, "not yet implemented parametric instruction (opcode %x)\n", opcode);
-            interpreter_exit();
+    if (opcode == OP_DROP) {
+        drop(&opd_stack);
+    } else if (opcode == OP_SELECT) {
+        eval_select();
+    } else {
+        fprintf(stderr, "not yet implemented parametric instruction (opcode %x)\n", opcode);
+        interpreter_exit();
+    }
+}
+
+static void eval_select(void) {
+    i32 c = pop_opd_i32();
+    valtype_t valtype = peek_valtype(&opd_stack);
+    val_t val1;
+    val_t val2;
+    pop_generic(valtype, &val2);
+    pop_generic(valtype, &val1);
+
+    if (c != 0) {
+        push_generic(valtype, &val1);
+    } else {
+        push_generic(valtype, &val2);
     }
 }
 

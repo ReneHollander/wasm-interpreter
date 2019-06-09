@@ -1,7 +1,51 @@
+#include <stdio.h>
+#include "variable.h"
 #include "opd_stack.h"
 #include "instruction.h"
+#include "interpreter.h"
 
 /* Some convenience functions defining operand stack operations */
+
+void pop_generic(valtype_t result_type, val_t *val) {
+    switch (result_type) {
+        case VALTYPE_I32:
+            val->i32 = pop_i32(&opd_stack);
+            break;
+        case VALTYPE_F64:
+            val->f64 = pop_f64(&opd_stack);
+            break;
+        case VALTYPE_I64:
+            val->i64 = pop_i64(&opd_stack);
+            break;
+        case VALTYPE_F32:
+            val->f32 = pop_f32(&opd_stack);
+            break;
+        default:
+            fprintf(stderr, "unknown return valtype");
+            interpreter_exit();
+    }
+}
+
+void push_generic(valtype_t result_type, val_t *val) {
+    switch (result_type) {
+        case VALTYPE_I32:
+            push_i32(&opd_stack, val->i32);
+            break;
+        case VALTYPE_F64:
+            push_f64(&opd_stack, val->f64);
+            break;
+        case VALTYPE_I64:
+            push_i64(&opd_stack, val->i64);
+            break;
+        case VALTYPE_F32:
+            push_f32(&opd_stack, val->f32);
+            break;
+        default:
+            fprintf(stderr, "unknown return valtype");
+            interpreter_exit();
+    }
+}
+
 i32 pop_opd_i32(void) {
     return pop_i32(&opd_stack);
 }
