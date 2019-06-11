@@ -1,3 +1,29 @@
+;; computes the factorial
+(func (export "factorial") (param i64) (result i64)
+    (get_local 0)
+    (i64.const 0)
+    (i64.eq)
+
+    (if (result i64)
+        (then (i64.const 1))
+        (else
+            get_local 0
+            get_local 0
+            i64.const 1
+            i64.sub
+            call 0
+            i64.mul
+         )
+     )
+)
+
+;; calls the factorial function with argument 5
+;; expected result: 120
+(func (export "call-factorial") (result i64)
+    (i64.const 5)
+    (call 0)
+)
+
 ;; should jump out of the inner block and add 4, 10
 ;; expected result: 14
 (func (export "br_test") (result i32)
@@ -28,14 +54,21 @@
 ;; expected result: 12
 (func (export "br_if_test1") (result i32)
     (block (result i32)
-    (block (result i32) (i32.const 2) (i32.const 1) (br_if 1)) (i32.const 10) i32.add)
+    (block (result i32) (i32.const 2) (i32.const 0) (br_if 1)) (i32.const 10) i32.add)
 )
 
-;; should jump to the end of the outer block into the containing function
+;; should jump out of both blocks into the containing function
 ;; expected result: 2
 (func (export "br_if_test2") (result i32)
     (block (result i32)
     (block (result i32) (i32.const 2) (i32.const 1) (br_if 1)) (i32.const 10) i32.add)
+)
+
+;; should jump out of the inner block into the outer block
+;; expected result: 12
+(func (export "br_if_test3") (result i32)
+    (block (result i32)
+    (block (result i32) (i32.const 2) (i32.const 1) (br_if 0)) (i32.const 10) i32.add)
 )
 
 ;; should take the if branch
@@ -85,30 +118,4 @@
         (br_if 0)
         (i32.const 1)
     )
-)
-
-;; computes the factorial
-(func (export "factorial") (param i64) (result i64)
-    (get_local 0)
-    (i64.const 0)
-    (i64.eq)
-
-    (if (result i64)
-        (then (i64.const 1))
-        (else
-            get_local 0
-            get_local 0
-            i64.const 1
-            i64.sub
-            call 10
-            i64.mul
-         )
-     )
-)
-
-;; calls the factorial function with argument 5
-;; expected result: 120
-(func (export "call-factorial") (result i64)
-    (i64.const 5)
-    (call 10)
 )

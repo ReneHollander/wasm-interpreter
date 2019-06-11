@@ -12,16 +12,16 @@ typedef union value {
     f64 f64;
 } value_t;
 
-typedef enum type {
+typedef enum marker {
     LABEL,              //marker for labels
     VALUE,              //marker for values
     FUNCTION            //marker for function calls
-} type_t;
+} marker_t;
 
 typedef struct entry_t {
     value_t value;
-    valtype_t valtype;
-    type_t type;
+    valtype_t valtype;  //only used for actual values
+    marker_t marker;
 } entry;
 
 typedef struct stack_t {

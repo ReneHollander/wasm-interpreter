@@ -27,7 +27,7 @@ void push_i32(stack *s, i32 value) {
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
     (**(s->entry + s->top)).value.i32 = value;
     (**(s->entry + s->top)).valtype = VALTYPE_I32;
-    (**(s->entry + s->top)).type = VALUE;
+    (**(s->entry + s->top)).marker = VALUE;
 }
 
 void push_i64(stack *s, i64 value) {
@@ -36,7 +36,7 @@ void push_i64(stack *s, i64 value) {
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
     (**(s->entry + s->top)).value.i64 = value;
     (**(s->entry + s->top)).valtype = VALTYPE_I64;
-    (**(s->entry + s->top)).type = VALUE;
+    (**(s->entry + s->top)).marker = VALUE;
 }
 
 void push_f32(stack *s, f32 value) {
@@ -45,7 +45,7 @@ void push_f32(stack *s, f32 value) {
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
     (**(s->entry + s->top)).value.f32 = value;
     (**(s->entry + s->top)).valtype = VALTYPE_F32;
-    (**(s->entry + s->top)).type = VALUE;
+    (**(s->entry + s->top)).marker = VALUE;
 }
 
 void push_f64(stack *s, f64 value) {
@@ -54,21 +54,21 @@ void push_f64(stack *s, f64 value) {
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
     (**(s->entry + s->top)).value.f64 = value;
     (**(s->entry + s->top)).valtype = VALTYPE_F64;
-    (**(s->entry + s->top)).type = VALUE;
+    (**(s->entry + s->top)).marker = VALUE;
 }
 
 void push_label(stack *s) {
     validate_push(s);
 
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
-    (**(s->entry + s->top)).type = LABEL;
+    (**(s->entry + s->top)).marker = LABEL;
 }
 
 void push_func_marker(stack *s) {
     validate_push(s);
 
     *(s->entry + (++s->top)) = malloc(sizeof(entry));
-    (**(s->entry + s->top)).type = FUNCTION;
+    (**(s->entry + s->top)).marker = FUNCTION;
 }
 
 void drop(stack *s) {
@@ -116,7 +116,7 @@ f64 pop_f64(stack *s) {
 bool pop_label(stack *s) {
     validate_pop(s);
 
-    type_t type = (**(s->entry + (s->top))).type;
+    marker_t type = (**(s->entry + (s->top))).marker;
     free(*(s->entry + s->top--));
 
     return type == LABEL;
@@ -125,7 +125,7 @@ bool pop_label(stack *s) {
 bool pop_func_marker(stack *s) {
     validate_pop(s);
 
-    type_t type = (**(s->entry + (s->top))).type;
+    marker_t type = (**(s->entry + (s->top))).marker;
     free(*(s->entry + s->top--));
 
     return type == FUNCTION;

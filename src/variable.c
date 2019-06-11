@@ -18,8 +18,6 @@ static void init_local(locals_t local);
 
 static void init_global(global_t global);
 
-static void eval_global_expr(expression_t expr);
-
 static void eval_global_instrs(vec_instruction_t *instructions);
 
 static valtype_t get_local_valtype(localidx idx);
@@ -186,7 +184,7 @@ void init_globals(vec_global_t *_globals) {
 }
 
 static void init_global(global_t global) {
-    eval_global_expr(global.e);
+    eval_global_instrs(global.e.instructions);
 
     //the result of the expression should be on the operand stack now, so we can consume it
     switch (global.gt.t) {
@@ -206,10 +204,6 @@ static void init_global(global_t global) {
             fprintf(stderr, "unknown global valtype: %X", global.gt.t);
             interpreter_exit();
     }
-}
-
-static void eval_global_expr(expression_t expr) {
-    eval_global_instrs(expr.instructions);
 }
 
 static void eval_global_instrs(vec_instruction_t *instructions) {

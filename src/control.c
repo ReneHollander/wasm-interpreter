@@ -106,32 +106,32 @@ static void eval_if(instruction_t instr) {
 }
 
 static void eval_br(instruction_t instr) {
-    int32_t lbl_idx = instr.labelidx;
     frame_t *frame = peek_frame();
     bool has_result = frame->arity > 0 ? true : false;
-    valtype_t result_type = frame->result_type;
     val_t val;
 
     //loop jumps do not save result values
     if (has_result && frame->context != LOOP_CONTEXT) {
-        pop_generic(result_type, &val);
+        pop_generic(frame->result_type, &val);
     }
 
-    while (lbl_idx >= 0) {
+    for (int32_t lbl_idx = instr.labelidx; lbl_idx >= 0; lbl_idx--) {
         while (!pop_label(&opd_stack));
         frame_t *current = peek_frame();
 
+        /* if we are in a loop and this is the outer level (lbl_idx = 0),
+           we want to jump back to the start (ip=0) and push the label again for
+            the next iteration, but we do not want to remove the frame */
         if (lbl_idx == 0 && current->context == LOOP_CONTEXT) {
             push_label(&opd_stack);
             current->ip = 0;
         } else {
             pop_frame();
         }
-        lbl_idx--;
     }
 
     if (has_result && frame->context != LOOP_CONTEXT) {
-        push_generic(result_type, &val);
+        push_generic(frame->result_type, &val);
     }
 }
 
