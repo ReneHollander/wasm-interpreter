@@ -97,6 +97,26 @@ static void print_result(func_t func) {
 static void init(void) {
     stack_init(&opd_stack, 1000);
 
+    if (module_global->mems != NULL) {
+        interpreter_error("modules with memory section not yet supported");
+    }
+    if (module_global->imports != NULL) {
+        bool hasMem = false;
+        memtype_t mem = {0};
+        for (int i = 0; i < module_global->imports->length; i++) {
+            if (module_global->imports->values[i].desc == IMPORTDESC_MEM) {
+                if (hasMem) {
+                    interpreter_error("only one memory import supported");
+                } else {
+                    mem = module_global->imports->values[i].mem;
+                    hasMem = true;
+                }
+            }
+        }
+        if (hasMem) {
+            init_memory(mem);
+        }
+    }
     init_globals(module_global->globals);
 }
 

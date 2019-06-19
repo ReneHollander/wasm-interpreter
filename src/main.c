@@ -3,6 +3,7 @@
 #include <string.h>
 #include "parser.h"
 #include "interpreter.h"
+#include "memory.h"
 
 void parse_error(char *msg) {
     fprintf(stderr, "Error parsing module: %s\n", msg);
@@ -21,6 +22,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
+    memory_t *mem = create_memory(1); // Create one page of memory (65535 bytes).
+
+    ((i32 *) mem->data)[0] = 5;
+
+    use_memory(mem);
+
     module_t *module = parse(input);
     fclose(input);
 
@@ -30,6 +37,12 @@ int main(int argc, char *argv[]) {
         interpret(module);
     }
 
+    i32 res0 = ((i32 *) mem->data)[0];
+    i32 res1 = ((i32 *) mem->data)[1];
+
+    printf("res0=%d, res1=%d\n", res0, res1);
+
+    free_memory(mem);
 
     return 0;
 }

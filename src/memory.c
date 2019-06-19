@@ -28,6 +28,20 @@ void free_memory(memory_t *m) {
     free(m);
 }
 
+void init_memory(memtype_t mem) {
+    if (memory == NULL) {
+        interpreter_error("this module needs memory");
+    }
+
+    if (mem.lim.min > memory->size) {
+        interpreter_error("memory size is too small for this import");
+    }
+
+    if (mem.lim.has_max && mem.lim.max > memory->max_size) {
+        interpreter_error("maximum memory size is too small for this import");
+    }
+}
+
 bool is_memory_instr(opcode_t opcode) {
     switch (opcode) {
         case OP_I32_LOAD:
