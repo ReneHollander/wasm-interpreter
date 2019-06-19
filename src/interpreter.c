@@ -10,6 +10,7 @@
 #include "variable.h"
 #include "control.h"
 #include "opd_stack.h"
+#include "strings.h"
 
 static void init(void);
 
@@ -155,8 +156,10 @@ void eval_instr(instruction_t instr) {
         eval_control_instr(instr);
     } else if (is_parametric_instr(opcode)) {
         eval_parametric_instr(instr);
+    } else if (is_memory_instr(opcode)) {
+        eval_memory_instr(instr);
     } else {
-        fprintf(stderr, "not yet implemented instruction (opcode %x)\n", opcode);
+        fprintf(stderr, "not yet implemented instruction %s (opcode 0x%x)\n", opcode2str(opcode), opcode);
         interpreter_exit();
     }
 }
