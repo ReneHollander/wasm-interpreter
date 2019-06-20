@@ -3,8 +3,11 @@ import json
 import pathlib
 import subprocess
 import sys
+import struct
 
-only_fails = True
+import math
+
+hide_successes = True
 test_dir = 'test/'
 test_build_dir = 'test/build/'
 test_binary = 'cmake-build-debug/test_runner'
@@ -12,6 +15,7 @@ test_binary = 'cmake-build-debug/test_runner'
 skip_suites = [
     'names',
 ]
+
 
 class bcolors:
     HEADER = '\033[95m'
@@ -24,12 +28,66 @@ class bcolors:
     UNDERLINE = '\033[4m'
 
 
+PREFIX_OK = "[" + bcolors.OKGREEN + " OK " + bcolors.ENDC + "]"
+PREFIX_WARN = "[" + bcolors.WARNING + "WARN" + bcolors.ENDC + "]"
+PREFIX_FAIL = "[" + bcolors.FAIL + "FAIL" + bcolors.ENDC + "]"
+
 counts = {
     'total': 0,
     'skipped': 0,
     'failed': 0,
     'successful': 0,
 }
+
+
+def invoke_test(test_binary, module, fn, args):
+    runner_args = [test_binary]
+    runner_args += ["-p", module]
+    runner_args += ["-f", fn]
+
+    for arg in args:
+        runner_args += ["-a", arg['type'] + ":" + arg['value']]
+
+    try:
+        result = subprocess.run(runner_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1)
+        if result.returncode != 0:
+            return result.stderr.decode('utf-8').rstrip("\r\n\t "), True
+        else:
+            return result.stdout.decode('utf-8').rstrip("\r\n\t "), False
+    except subprocess.TimeoutExpired as e:
+        return "invocation timed out", True
+
+
+def stringify_call(fn, args):
+    return fn + '(' + ', '.join([arg['type'] + ':' + arg['value'] for arg in args]) + ')'
+
+
+def stringify_result(command):
+    if command['type'] == 'assert_return':
+        if len(command['expected']) == 0:
+            return 'void'
+        return command['expected'][0]['type'] + ':' + command['expected'][0]['value']
+    if command['type'] == 'assert_return_arithmetic_nan':
+        return 'arithmetic_nan'
+    if command['type'] == 'assert_return_canonical_nan':
+        return 'canonical_nan'
+
+
+def check_result(actual, command):
+    if command['type'] == 'assert_return':
+        if len(command['expected']) == 0:
+            return actual == 'void'
+        return actual == (command['expected'][0]['type'] + ':' + command['expected'][0]['value'])
+    if command['type'] == 'assert_return_arithmetic_nan' or command['type'] == 'assert_return_canonical_nan':
+        t = actual.split(":")[0]
+        v = int(actual.split(":")[1])
+        if t == 'f32':
+            f = struct.unpack('f', struct.pack('I', v))[0]
+        elif t == 'f64':
+            f = struct.unpack('d', struct.pack('Q', v))[0]
+        else:
+            return False
+        return math.isnan(f)
 
 
 def run_suite(name, test_suite, test_binaries):
@@ -49,63 +107,34 @@ def run_suite(name, test_suite, test_binaries):
         counts['total'] += 1
 
         if name in skip_suites:
-            print(bcolors.WARNING + line_str + "Skipping test due to exclude " + name + bcolors.ENDC)
+            print(PREFIX_WARN + " " + line_str + "Skipping test due to exclude " + name)
             counts['skipped'] += 1
             continue
 
-        if command['type'] == 'assert_return':
+        if command['type'] == 'assert_return' or command['type'] == 'assert_return_canonical_nan' or command['type'] == 'assert_return_arithmetic_nan':
             action = command['action']
             if action['type'] == 'invoke':
-                runner_args = [
-                    test_binary
-                ]
-                runner_args += [
-                    "-p", test_binaries + current_module
-                ]
-                field = action['field']
-                runner_args += ["-f", field]
-                return_value_string = 'void'
-                if len(command['expected']) != 0:
-                    expected_type = command['expected'][0]['type']
-                    expected_value = command['expected'][0]['value']
-                    return_value_string = expected_type + ':' + expected_value
+                result, failed = invoke_test(test_binary, test_binaries + current_module, action['field'], action['args'])
 
-                args = []
-                for arg in action['args']:
-                    type = arg['type']
-                    value = arg['value']
-                    args.append(type + ':' + value)
-                    runner_args += ["-a", type + ":" + value]
+                if not check_result(result, command):
+                    failed = True
 
-                printed_call = line_str + field + '(' + ', '.join(args) + ') != ' + return_value_string
-
-                try:
-                    result = subprocess.run(runner_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1)
-                    if result.returncode != 0:
-                        counts['failed'] += 1
-                        return_str = result.stderr.decode('utf-8').rstrip("\r\n\t ")
-                        print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_str)
-                    else:
-                        return_value = result.stdout.decode('utf-8').rstrip("\r\n\t ")
-                        if return_value_string != return_value:
-                            counts['failed'] += 1
-                            print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_value)
-                        else:
-                            counts['successful'] += 1
-                            if not only_fails:
-                                print(bcolors.OKGREEN + printed_call + bcolors.ENDC)
-                except subprocess.TimeoutExpired as e:
+                if failed:
                     counts['failed'] += 1
-                    print(bcolors.FAIL + printed_call + bcolors.ENDC + ", test timed out")
+                    prefix = PREFIX_FAIL
+                else:
+                    counts['successful'] += 1
+                    prefix = PREFIX_OK
+
+                if failed or (not failed and not hide_successes):
+                    print(prefix + " " + line_str + stringify_call(action['field'], action['args']) + ": expected=" + stringify_result(command) + ", actual=" + result)
             else:
-                if not only_fails:
-                    print(bcolors.WARNING + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
+                print(PREFIX_WARN + " " + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
                 counts['skipped'] += 1
 
             continue
 
-        if not only_fails:
-            print(bcolors.WARNING + line_str + "Skipping test with command type " + command['type'] + bcolors.ENDC)
+        print(PREFIX_WARN + " " + line_str + "Skipping test with command type " + command['type'] + bcolors.ENDC)
         counts['skipped'] += 1
 
 
