@@ -77,7 +77,7 @@ static void print_result(func_t func) {
                 fprintf(stdout, "result is: %d\n", pop_opd_i32());
                 break;
             case VALTYPE_I64:
-                fprintf(stdout, "result is: %lld\n", pop_opd_i64());
+                fprintf(stdout, "result is: %ld\n", pop_opd_i64());
                 break;
             case VALTYPE_F32:
                 fprintf(stdout, "result is: %f\n", pop_opd_f32());

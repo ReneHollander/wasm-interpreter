@@ -30,7 +30,7 @@ void print_stack(stack *s) {
                     fprintf(stdout, "value: %d\n", entry.value.i32);
                     break;
                 case VALTYPE_I64:
-                    fprintf(stdout, "value: %lld\n", entry.value.i64);
+                    fprintf(stdout, "value: %ld\n", entry.value.i64);
                     break;
                 case VALTYPE_F32:
                     fprintf(stdout, "value: %f\n", entry.value.f32);
