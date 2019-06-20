@@ -79,25 +79,30 @@ def run_suite(name, test_suite, test_binaries):
 
                 printed_call = line_str + field + '(' + ', '.join(args) + ') != ' + return_value_string
 
-                result = subprocess.run(runner_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-                if result.returncode != 0:
-                    counts['failed'] += 1
-                    return_str = result.stderr.decode('utf-8').rstrip("\r\n\t ")
-                    print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_str)
-                else:
-                    return_value = result.stdout.decode('utf-8').rstrip("\r\n\t ")
-                    if return_value_string != return_value:
+                try:
+                    result = subprocess.run(runner_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1)
+                    if result.returncode != 0:
                         counts['failed'] += 1
-                        print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_value)
+                        return_str = result.stderr.decode('utf-8').rstrip("\r\n\t ")
+                        print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_str)
                     else:
-                        counts['successful'] += 1
-                        print(bcolors.OKGREEN + printed_call + bcolors.ENDC)
+                        return_value = result.stdout.decode('utf-8').rstrip("\r\n\t ")
+                        if return_value_string != return_value:
+                            counts['failed'] += 1
+                            print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_value)
+                        else:
+                            counts['successful'] += 1
+                            print(bcolors.OKGREEN + printed_call + bcolors.ENDC)
+                except subprocess.TimeoutExpired as e:
+                    counts['failed'] += 1
+                    print(bcolors.FAIL + printed_call + bcolors.ENDC + ", test timed out")
+            else:
+                print(bcolors.WARNING + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
+                counts['skipped'] += 1
+
             continue
 
-        if command['type'] == 'assert_trap':
-            continue
-
-        print(bcolors.WARNING + line_str + "Skipping test with type " + command['type'] + bcolors.ENDC)
+        print(bcolors.WARNING + line_str + "Skipping test with command type " + command['type'] + bcolors.ENDC)
         counts['skipped'] += 1
 
 
