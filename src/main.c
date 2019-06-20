@@ -32,9 +32,29 @@ int main(int argc, char *argv[]) {
     fclose(input);
 
     if (argc == 3) {
-        interpret_function(module, argv[2]);
-    } else {
-        interpret(module);
+        return_value_t ret = interpret_function(module, argv[2], NULL);
+
+        if (ret.type == 0) {
+            printf("void");
+        } else {
+            switch (ret.type) {
+                case VALTYPE_I32:
+                    printf("return value: i32:%d\n", ret.val.i32);
+                    break;
+                case VALTYPE_I64:
+                    printf("return value: i64:%ld\n", ret.val.i64);
+                    break;
+                case VALTYPE_F32:
+                    printf("return value: f32:%f\n", ret.val.f32);
+                    break;
+                case VALTYPE_F64:
+                    printf("return value: f64:%f\n", ret.val.f64);
+                    break;
+                default:
+                    fprintf(stderr, "unknown return valtype");
+                    interpreter_exit();
+            }
+        }
     }
 
     i32 res0 = ((i32 *) mem->data)[0];

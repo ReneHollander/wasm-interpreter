@@ -3,10 +3,21 @@
 
 #include "module.h"
 #include "stack.h"
+#include "variable.h"
+
+typedef struct parameter_value {
+    val_t val;
+    valtype_t type;
+} parameter_value_t;
+
+typedef struct return_value {
+    val_t val;
+    valtype_t type;
+} return_value_t;
 
 void interpret(module_t *module);
 
-void interpret_function(module_t *module, char *func_name);
+return_value_t interpret_function(module_t *module, char *func_name, node_t *args);
 
 void interpreter_error(char *err_message);
 

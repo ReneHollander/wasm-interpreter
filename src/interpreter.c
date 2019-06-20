@@ -30,24 +30,8 @@ static void print_result(func_t func);
 
 static instruction_t *fetch_next_instr(void);
 
-/* Intended to call the start function of the module - not yet implemented */
-void interpret(module_t *module) {
-    module_global = module;
-    init();
-
-    if (module->types == NULL || module->funcs == NULL) {
-        interpreter_error("could not find all required sections \n");
-    }
-
-    if (module->has_start) {
-        //call start function
-    } else {
-        interpreter_error("no start function found\n");
-    }
-}
-
 /* Intended to call a specific exported function */
-void interpret_function(module_t *module, char *func_name) {
+return_value_t interpret_function(module_t *module, char *func_name, node_t *args) {
     module_global = module;
     init();
 
@@ -56,42 +40,28 @@ void interpret_function(module_t *module, char *func_name) {
     }
 
     func_t func = find_func(module->exports, module->funcs, func_name);
+    for (int i = 0; i < length(&args); i++) {
+        parameter_value_t *param = get_at(&args, i);
+        push_generic(param->type, &param->val);
+    }
+
     eval_call(func);
 
-    print_result(func);
+    return_value_t return_value = {0};
+    vec_valtype_t *fun_output = module_global->types->values[func.type].t2;
+    if (fun_output->length == 1) {
+        return_value.type = fun_output->values[0];
+        pop_generic(fun_output->values[0], &return_value.val);
+    } else if (fun_output->length > 1) {
+        interpreter_error("more than one result is not supported currently\n");
+    }
 
     //if the operand stack is not empty, something went wrong
     if (!stack_is_empty(&opd_stack)) {
         interpreter_error("operand stack is not empty");
     }
-}
 
-static void print_result(func_t func) {
-    vec_valtype_t *fun_output = module_global->types->values[func.type].t2;
-
-    if (fun_output->length == 1) {
-        valtype_t valtype = fun_output->values[0];
-
-        switch (valtype) {
-            case VALTYPE_I32:
-                fprintf(stdout, "result is: %d\n", pop_opd_i32());
-                break;
-            case VALTYPE_I64:
-                fprintf(stdout, "result is: %ld\n", pop_opd_i64());
-                break;
-            case VALTYPE_F32:
-                fprintf(stdout, "result is: %f\n", pop_opd_f32());
-                break;
-            case VALTYPE_F64:
-                fprintf(stdout, "result is: %f\n", pop_opd_f64());
-                break;
-            default:
-                fprintf(stderr, "unknown result valtype: %d\n", valtype);
-                interpreter_exit();
-        }
-    } else if (fun_output->length > 1) {
-        interpreter_error("more than one result is not supported currently\n");
-    }
+    return return_value;
 }
 
 static void init(void) {
