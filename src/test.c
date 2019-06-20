@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'a':
                 parse_arg(strdup(optarg), &a);
-                insert_first(&args, &a, sizeof(parameter_value_t));
+                insert_last(&args, &a, sizeof(parameter_value_t));
                 break;
             default: /* '?' */
                 usage();

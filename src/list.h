@@ -12,6 +12,8 @@ typedef struct node {
 
 void insert_first(node_t **head_ref, void *new_data, uint32_t data_size);
 
+void insert_last(node_t **head_ref, void *new_data, uint32_t data_size);
+
 void delete_first(node_t **head_ref);
 
 void *get_at(node_t **head_ref, uint32_t idx);

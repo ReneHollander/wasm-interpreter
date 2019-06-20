@@ -19,6 +19,28 @@ void insert_first(node_t **head_ref, void *new_data, uint32_t data_size) {
     (*head_ref) = new_node;
 }
 
+void insert_last(node_t **head_ref, void *new_data, uint32_t data_size) {
+    node_t *new_node = (node_t *) malloc(sizeof(node_t));
+
+    new_node->data = malloc(data_size);
+    new_node->next = NULL;
+
+    int i;
+    for (i = 0; i < data_size; i++)
+        *(byte *) (new_node->data + i) = *(byte *) (new_data + i);
+
+    node_t *cur = *head_ref;
+    if (cur == NULL) {
+        *head_ref = new_node;
+        return;
+    }
+
+    for (; cur->next != NULL;) {
+        cur = cur->next;
+    }
+    cur->next = new_node;
+}
+
 void delete_first(node_t **head_ref) {
     if (*head_ref == NULL) {
         fprintf(stderr, "tried to delete element from empty list\n");
@@ -40,7 +62,7 @@ void *get_at(node_t **head_ref, uint32_t idx) {
         }
         cur = cur->next;
     }
-    
+
     return NULL;
 }
 
