@@ -67,25 +67,31 @@ return_value_t interpret_function(module_t *module, char *func_name, node_t *arg
 static void init(void) {
     stack_init(&opd_stack, 1000);
 
+    bool hasMem = false;
+    memtype_t memtype = {0};
+
     if (module_global->mems != NULL) {
-        interpreter_error("modules with memory section not yet supported");
+        if (module_global->mems->length > 1) {
+            interpreter_error("only one memory section supported");
+        }
+        memtype = module_global->mems->values[0];
+        memory_t *mem = create_memory(memtype.lim.min);
+        use_memory(mem);
     }
     if (module_global->imports != NULL) {
-        bool hasMem = false;
-        memtype_t mem = {0};
         for (int i = 0; i < module_global->imports->length; i++) {
             if (module_global->imports->values[i].desc == IMPORTDESC_MEM) {
                 if (hasMem) {
                     interpreter_error("only one memory import supported");
                 } else {
-                    mem = module_global->imports->values[i].mem;
+                    memtype = module_global->imports->values[i].mem;
                     hasMem = true;
                 }
             }
         }
-        if (hasMem) {
-            init_memory(mem);
-        }
+    }
+    if (hasMem) {
+        init_memory(memtype);
     }
     init_globals(module_global->globals);
 }
