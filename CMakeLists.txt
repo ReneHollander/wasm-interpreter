@@ -13,9 +13,7 @@ add_library(wasm_parser
         )
 set_property(TARGET wasm_parser PROPERTY C_STANDARD 99)
 
-add_executable(wasm_interpreter
-        src/parser.h
-        src/main.c
+add_library(wasm_interpreter
         src/interpreter.c
         src/interpreter.h
         src/stack.c
@@ -31,7 +29,14 @@ add_executable(wasm_interpreter
         src/control.c
         src/control.h
         src/opd_stack.c
-        src/opd_stack.h)
+        src/opd_stack.h
+        )
 set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
+target_link_libraries(wasm_interpreter m)
 
-target_link_libraries(wasm_interpreter m wasm_parser)
+add_executable(main
+        src/main.c
+        )
+set_property(TARGET main PROPERTY C_STANDARD 99)
+target_link_libraries(main wasm_parser)
+target_link_libraries(main wasm_interpreter)
