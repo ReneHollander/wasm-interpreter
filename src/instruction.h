@@ -109,8 +109,8 @@ typedef enum opcode {
     OP_I32_OR = 0x72,
     OP_I32_XOR = 0x73,
     OP_I32_SHL = 0x74,
-    OP_I32_SHR_U = 0x75,
-    OP_I32_SHR_S = 0x76,
+    OP_I32_SHR_S = 0x75,
+    OP_I32_SHR_U = 0x76,
     OP_I32_ROTL = 0x77,
     OP_I32_ROTR = 0x78,
 
