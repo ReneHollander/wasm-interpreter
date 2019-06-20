@@ -17,6 +17,37 @@ void stack_init(stack *s, uint32_t size) {
     }
 }
 
+void print_stack(stack *s) {
+    fprintf(stdout, "printing stack...\n");
+
+    for (int i = 0; i <= s->top; i++) {
+        struct entry_t entry = **(s->entry + i);
+
+        if (entry.marker == VALUE) {
+            switch (entry.valtype) {
+                case VALTYPE_I32:
+                    fprintf(stdout, "value: %d\n", entry.value.i32);
+                    break;
+                case VALTYPE_I64:
+                    fprintf(stdout, "value: %lld\n", entry.value.i64);
+                    break;
+                case VALTYPE_F32:
+                    fprintf(stdout, "value: %f\n", entry.value.f32);
+                    break;
+                case VALTYPE_F64:
+                    fprintf(stdout, "value: %f\n", entry.value.f64);
+                    break;
+            }
+        } else if (entry.marker == LABEL) {
+            fprintf(stdout, "label marker\n");
+        } else if (entry.marker == FUNCTION) {
+            fprintf(stdout, "function marker\n");
+        }
+    }
+
+    fprintf(stdout, "printing stack finished...\n");
+}
+
 bool stack_is_empty(stack *s) {
     return s->top == -1;
 }
