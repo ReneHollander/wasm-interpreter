@@ -32,10 +32,10 @@ void parse_arg(char *str, parameter_value_t *param) {
         param->val.i64 = (i64) strtoul(value_str, NULL, 10);
     } else if (strcmp(type_str, "f32") == 0) {
         param->type = VALTYPE_F32;
-        param->val.f32 = strtof(value_str, NULL);
+        param->val.i32 = strtoul(value_str, NULL, 10);
     } else if (strcmp(type_str, "f64") == 0) {
         param->type = VALTYPE_F64;
-        param->val.f64 = strtod(value_str, NULL);
+        param->val.i64 = strtoul(value_str, NULL, 10);
     } else {
         fprintf(stderr, "Unknown parameter type %s\n", type_str);
     }
@@ -100,10 +100,10 @@ int main(int argc, char *argv[]) {
                 printf("i64:%lu", ret.val.i64);
                 break;
             case VALTYPE_F32:
-                printf("f32:%f", ret.val.f32);
+                printf("f32:%u", ret.val.i32);
                 break;
             case VALTYPE_F64:
-                printf("f64:%f", ret.val.f64);
+                printf("f64:%lu", ret.val.i64);
                 break;
             default:
                 fprintf(stderr, "unknown return valtype");
