@@ -4,6 +4,8 @@
 #include "stdio.h"
 #include "module.h"
 
-module_t *parse(FILE *input);
+typedef void (*parse_error_f)(char *msg);
+
+module_t *parse(FILE *input, parse_error_f parse_error);
 
 #endif // PARSER_H

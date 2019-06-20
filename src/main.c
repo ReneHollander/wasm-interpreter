@@ -28,7 +28,7 @@ int main(int argc, char *argv[]) {
 
     use_memory(mem);
 
-    module_t *module = parse(input);
+    module_t *module = parse(input, parse_error);
     fclose(input);
 
     if (argc == 3) {
