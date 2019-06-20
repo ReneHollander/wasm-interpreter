@@ -128,8 +128,8 @@ typedef enum opcode {
     OP_I64_OR = 0x84,
     OP_I64_XOR = 0x85,
     OP_I64_SHL = 0x86,
-    OP_I64_SHR_U = 0x87,
-    OP_I64_SHR_S = 0x88,
+    OP_I64_SHR_S = 0x87,
+    OP_I64_SHR_U = 0x88,
     OP_I64_ROTL = 0x89,
     OP_I64_ROTR = 0x8A,
 
