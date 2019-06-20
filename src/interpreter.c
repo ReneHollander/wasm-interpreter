@@ -64,6 +64,47 @@ return_value_t interpret_function(module_t *module, char *func_name, node_t *arg
     return return_value;
 }
 
+void init_datas(vec_data_t *_datas) {
+    if (_datas == NULL) {
+        return;
+    }
+
+    if (_datas->length == 0) return;
+
+    if (_datas->length > 1) {
+        interpreter_error("only one data section allowed");
+    }
+
+    memory_t *memory = get_current_memory();
+    if (memory == NULL) {
+        interpreter_error("no memory found");
+    }
+
+    data_t data = _datas->values[0];
+    if (data.memidx != 0) {
+        interpreter_error("data section only for memory with index 0 supported");
+    }
+
+    for (int j = 0; j < data.expression.instructions->length; j++) {
+        eval_instr(data.expression.instructions->values[j]);
+    }
+
+    //the result of the expression should be on the operand stack now, so we can consume it
+    valtype_t result_type;
+    val_t val;
+    pop_unknown(&result_type, &val);
+    if (result_type != VALTYPE_I32) {
+        interpreter_error("data expression does not evaluate to i32");
+    }
+    i32 offset = val.i32;
+
+    if (memory->size * PAGE_SIZE < offset + data.init->length) {
+        interpreter_error("data section does not fit into memory");
+    }
+
+    memcpy(memory->data + offset, data.init->values, data.init->length);
+}
+
 static void init(void) {
     stack_init(&opd_stack, 1000);
 
@@ -94,6 +135,7 @@ static void init(void) {
         init_memory(memtype);
     }
     init_globals(module_global->globals);
+    init_datas(module_global->data);
 }
 
 static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name) {

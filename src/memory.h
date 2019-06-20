@@ -16,6 +16,8 @@ memory_t *create_memory(i32 max_size);
 
 void use_memory(memory_t *m);
 
+memory_t *get_current_memory();
+
 void free_memory(memory_t *m);
 
 void init_memory(memtype_t mem);

@@ -6,6 +6,11 @@
 
 /* Some convenience functions defining operand stack operations */
 
+void pop_unknown(valtype_t *result_type, val_t *val) {
+    *result_type = peek_valtype(&opd_stack);
+    pop_generic(*result_type, val);
+}
+
 void pop_generic(valtype_t result_type, val_t *val) {
     switch (result_type) {
         case VALTYPE_I32:

@@ -22,6 +22,10 @@ void use_memory(memory_t *m) {
     memory = m;
 }
 
+memory_t *get_current_memory() {
+    return memory;
+}
+
 void free_memory(memory_t *m) {
     if (m->data != NULL) {
         free(m->data);
@@ -92,24 +96,24 @@ void eval_memory_instr(instruction_t instr) {
 
 #define LOAD_INSN(srctype, targettype) \
     i32 ea = caluclate_address(instr, sizeof(srctype) * 8); \
-    srctype value = ((srctype *) memory->data)[ea]; \
+    srctype value = *((srctype *) (memory->data + ea)); \
     CAT(push_opd_, targettype)((targettype) value)
 
 #define FLOAT_LOAD_INSN(type) \
     i32 ea = caluclate_address(instr, sizeof(type) * 8); \
-    type value = ((type *) memory->data)[ea]; \
+    type value = *((type *) (memory->data + ea)); \
     CAT(push_opd_, type)(value)
 
 #define STORE_INSN(srctype, intermediatetype, targettype) \
     srctype value = CAT(pop_opd_, srctype)(); \
     intermediatetype v = (intermediatetype) value; \
     i32 ea = caluclate_address(instr, sizeof(targettype) * 8); \
-    ((targettype *) memory->data)[ea] = (targettype) (v & BIT_MASK(intermediatetype, sizeof(targettype) * 8))
+    *((targettype *) (memory->data + ea)) = (targettype) (v & BIT_MASK(intermediatetype, sizeof(targettype) * 8))
 
 #define FLOAT_STORE_INSN(type) \
     type value = CAT(pop_opd_, type)(); \
     i32 ea = caluclate_address(instr, sizeof(type) * 8); \
-    ((type *) memory->data)[ea] = value
+    *((type *) (memory->data + ea)) = value
 
     opcode_t opcode = instr.opcode;
     if (opcode == OP_I32_LOAD) {
