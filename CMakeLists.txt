@@ -40,3 +40,10 @@ add_executable(main
 set_property(TARGET main PROPERTY C_STANDARD 99)
 target_link_libraries(main wasm_parser)
 target_link_libraries(main wasm_interpreter)
+
+add_executable(test_runner
+        src/test.c
+        )
+set_property(TARGET test_runner PROPERTY C_STANDARD 99)
+target_link_libraries(test_runner wasm_parser)
+target_link_libraries(test_runner wasm_interpreter)
