@@ -129,12 +129,12 @@ static void eval_br(instruction_t instr) {
     val_t val;
 
     //loop jumps do not save result values
-    if (has_result && frame->context != LOOP_CONTEXT) {
+    if (has_result && (frame->context != LOOP_CONTEXT || instr.labelidx > 0)) {
         pop_generic(frame->result_type, &val);
     }
 
     for (int32_t lbl_idx = instr.labelidx; lbl_idx >= 0; lbl_idx--) {
-        while (!pop_label(&opd_stack));
+        while (!pop_label_or_func_marker(&opd_stack));
         frame_t *current = peek_frame();
 
         /* if we are in a loop and this is the outer level (lbl_idx = 0),
@@ -148,7 +148,7 @@ static void eval_br(instruction_t instr) {
         }
     }
 
-    if (has_result && frame->context != LOOP_CONTEXT) {
+    if (has_result && (frame->context != LOOP_CONTEXT || instr.labelidx > 0)) {
         push_generic(frame->result_type, &val);
     }
 }

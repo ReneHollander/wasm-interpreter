@@ -154,6 +154,15 @@ bool pop_label(stack *s) {
     return type == LABEL;
 }
 
+bool pop_label_or_func_marker(stack *s) {
+    validate_pop(s);
+
+    marker_t type = (**(s->entry + (s->top))).marker;
+    free(*(s->entry + s->top--));
+
+    return type == LABEL || type == FUNCTION;
+}
+
 bool pop_func_marker(stack *s) {
     validate_pop(s);
 

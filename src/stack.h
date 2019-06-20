@@ -72,6 +72,8 @@ void push_func_marker(stack *s);
 
 bool pop_func_marker(stack *s);
 
+bool pop_label_or_func_marker(stack *s);
+
 void drop(stack *s);
 
 void destroy(stack *s);

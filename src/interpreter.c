@@ -16,8 +16,6 @@ static void init(void);
 
 static void eval_parametric_instr(instruction_t instr);
 
-static void eval_global_expr(expression_t expr);
-
 static void eval_global_instrs(vec_instruction_t *instructions);
 
 static bool is_parametric_instr(opcode_t opcode);
@@ -25,8 +23,6 @@ static bool is_parametric_instr(opcode_t opcode);
 static void eval_select(void);
 
 static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name);
-
-static void print_result(func_t func);
 
 static instruction_t *fetch_next_instr(void);
 
@@ -58,6 +54,7 @@ return_value_t interpret_function(module_t *module, char *func_name, node_t *arg
 
     //if the operand stack is not empty, something went wrong
     if (!stack_is_empty(&opd_stack)) {
+        print_stack(&opd_stack);
         interpreter_error("operand stack is not empty");
     }
 
