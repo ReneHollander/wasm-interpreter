@@ -10,8 +10,6 @@
 #include "interpreter.h"
 #include "opd_stack.h"
 
-static frame_t *peek_func_frame(void);
-
 static void init_param(valtype_t param_valtype);
 
 static void init_local(locals_t local);
@@ -380,7 +378,7 @@ frame_t *peek_frame(void) {
     return (frame_t *) get_at(&frames, 0);
 }
 
-static frame_t *peek_func_frame(void) {
+frame_t *peek_func_frame(void) {
     node_t *cur = frames;
 
     for (int i = 0; cur != NULL; i++) {

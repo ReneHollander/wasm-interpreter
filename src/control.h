@@ -12,6 +12,6 @@ void clean_to_label();
 
 void eval_control_instr(instruction_t instr);
 
-void call_func(func_t func);
+void eval_call(func_t func);
 
 #endif //WASM_INTERPRETER_CONTROL_H

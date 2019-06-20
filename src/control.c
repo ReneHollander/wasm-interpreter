@@ -22,11 +22,14 @@ static void eval_loop(instruction_t instr);
 
 static void eval_block(instruction_t instr);
 
+static void eval_br_table(instruction_t instr);
+
+
 void eval_control_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     if (opcode == OP_CALL) {
-        call_func(module_global->funcs->values[instr.funcidx]);
+        eval_call(module_global->funcs->values[instr.funcidx]);
     } else if (opcode == OP_NOP) {
         //do nothing
     } else if (opcode == OP_UNREACHABLE) {
@@ -43,13 +46,15 @@ void eval_control_instr(instruction_t instr) {
         eval_loop(instr);
     } else if (opcode == OP_RETURN) {
         eval_return();
+    } else if (opcode == OP_BR_TABLE) {
+        eval_br_table(instr);
     } else {
         fprintf(stderr, "not yet implemented control instruction (opcode %x)\n", opcode);
         interpreter_exit();
     }
 }
 
-void call_func(func_t func) {
+void eval_call(func_t func) {
     vec_valtype_t *fun_output = module_global->types->values[func.type].t2;
     push_frame(func.expression.instructions, fun_output->length, fun_output->values[0], FUNCTION_CONTEXT);
 
@@ -77,6 +82,19 @@ static void eval_br_if(instruction_t instr) {
     i32 val = pop_opd_i32();
 
     if (val != 0) {
+        eval_br(instr);
+    }
+}
+
+static void eval_br_table(instruction_t instr) {
+    i32 index = pop_opd_i32();
+    vec_labelidx_t *labels = instr.table.labels;
+
+    if (index < labels->length) {
+        instr.labelidx = labels->values[index];
+        eval_br(instr);
+    } else {
+        instr.labelidx = instr.table.default_label;
         eval_br(instr);
     }
 }
@@ -155,7 +173,7 @@ bool is_control_instr(opcode_t opcode) {
 }
 
 void clean_to_func_marker() {
-    frame_t *frame = peek_frame();
+    frame_t *frame = peek_func_frame();
     bool has_result = frame->arity > 0 ? true : false;
     val_t val;
 

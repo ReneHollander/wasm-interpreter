@@ -56,7 +56,7 @@ void interpret_function(module_t *module, char *func_name) {
     }
 
     func_t func = find_func(module->exports, module->funcs, func_name);
-    call_func(func);
+    eval_call(func);
 
     print_result(func);
 

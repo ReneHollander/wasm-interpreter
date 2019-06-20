@@ -56,6 +56,8 @@ void pop_frame(void);
 
 frame_t *peek_frame(void);
 
+frame_t *peek_func_frame(void);
+
 /* **************** */
 
 #endif //WASM_INTERPRETER_VARIABLE_H

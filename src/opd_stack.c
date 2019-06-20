@@ -9,16 +9,16 @@
 void pop_generic(valtype_t result_type, val_t *val) {
     switch (result_type) {
         case VALTYPE_I32:
-            val->i32 = pop_i32(&opd_stack);
+            val->i32 = pop_opd_i32();
             break;
         case VALTYPE_F64:
-            val->f64 = pop_f64(&opd_stack);
+            val->f64 = pop_opd_f64();
             break;
         case VALTYPE_I64:
-            val->i64 = pop_i64(&opd_stack);
+            val->i64 = pop_opd_i64();
             break;
         case VALTYPE_F32:
-            val->f32 = pop_f32(&opd_stack);
+            val->f32 = pop_opd_f32();
             break;
         default:
             fprintf(stderr, "unknown return valtype");

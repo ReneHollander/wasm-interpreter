@@ -19,8 +19,9 @@ void stack_init(stack *s, uint32_t size) {
 
 void print_stack(stack *s) {
     fprintf(stdout, "printing stack...\n");
+    fprintf(stdout, "-----------------------\n");
 
-    for (int i = 0; i <= s->top; i++) {
+    for (int i = s->top; i >= 0; i--) {
         struct entry_t entry = **(s->entry + i);
 
         if (entry.marker == VALUE) {
@@ -45,7 +46,7 @@ void print_stack(stack *s) {
         }
     }
 
-    fprintf(stdout, "printing stack finished...\n");
+    fprintf(stdout, "-----------------------\n");
 }
 
 bool stack_is_empty(stack *s) {
