@@ -193,6 +193,12 @@ valtype_t peek_valtype(stack *s) {
     return (**(s->entry + (s->top))).valtype;
 }
 
+entry *peek(stack *s) {
+    validate_pop(s);
+
+    return *(s->entry + (s->top));
+}
+
 void destroy(stack *s) {
     free(s->entry);
 }

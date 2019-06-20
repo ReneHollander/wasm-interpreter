@@ -447,7 +447,7 @@ static inline void parse_instruction(parser_state_t *state, instruction_t *instr
         case OP_F64_PROMOTE_F32:
         case OP_I32_REINTERPRET_F32:
         case OP_I64_REINTERPRET_F64:
-        case OP_F32_REINTERPRET_F32:
+        case OP_F32_REINTERPRET_I32:
         case OP_F64_REINTERPRET_I64:
             break;
         default:

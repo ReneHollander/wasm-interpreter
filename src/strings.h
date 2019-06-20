@@ -344,10 +344,10 @@ static const char *opcode2str(opcode_t opcode) {
             return "i32.reinterpret_f32";
         case OP_I64_REINTERPRET_F64:
             return "i64.reinterpret_f64";
-        case OP_F32_REINTERPRET_F32:
-            return "f32.reinterpret_f32";
+        case OP_F32_REINTERPRET_I32:
+            return "f32.reinterpret_i32";
         case OP_F64_REINTERPRET_I64:
-            return "f64.reinterpret_f64";
+            return "f64.reinterpret_i64";
         default:
             return "unknown";
     }

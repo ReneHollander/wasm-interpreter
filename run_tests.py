@@ -4,6 +4,7 @@ import pathlib
 import subprocess
 import sys
 
+only_fails = True
 test_dir = 'test/'
 test_build_dir = 'test/build/'
 test_binary = 'cmake-build-debug/test_runner'
@@ -11,7 +12,6 @@ test_binary = 'cmake-build-debug/test_runner'
 skip_suites = [
     'names',
 ]
-
 
 class bcolors:
     HEADER = '\033[95m'
@@ -92,17 +92,20 @@ def run_suite(name, test_suite, test_binaries):
                             print(bcolors.FAIL + printed_call + bcolors.ENDC + ", actual " + return_value)
                         else:
                             counts['successful'] += 1
-                            print(bcolors.OKGREEN + printed_call + bcolors.ENDC)
+                            if not only_fails:
+                                print(bcolors.OKGREEN + printed_call + bcolors.ENDC)
                 except subprocess.TimeoutExpired as e:
                     counts['failed'] += 1
                     print(bcolors.FAIL + printed_call + bcolors.ENDC + ", test timed out")
             else:
-                print(bcolors.WARNING + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
+                if not only_fails:
+                    print(bcolors.WARNING + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
                 counts['skipped'] += 1
 
             continue
 
-        print(bcolors.WARNING + line_str + "Skipping test with command type " + command['type'] + bcolors.ENDC)
+        if not only_fails:
+            print(bcolors.WARNING + line_str + "Skipping test with command type " + command['type'] + bcolors.ENDC)
         counts['skipped'] += 1
 
 

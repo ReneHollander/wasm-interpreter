@@ -6,6 +6,6 @@
 
 bool is_numeric_instr(opcode_t opcode);
 
-void eval_numeric_instr(instruction_t instr);
+void eval_numeric_instr(instruction_t *instr);
 
 #endif //WASM_INTERPRETER_NUMERIC_H

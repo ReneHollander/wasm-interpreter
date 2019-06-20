@@ -11,802 +11,876 @@
 #include "opd_stack.h"
 #include "interpreter.h"
 
-static void eval_rel(instruction_t instr);
+typedef void (*numeric_func)(instruction_t *instr);
 
-static bool is_add(opcode_t opcode);
+#define OP_HANDLER(op) \
+    static void CAT(op, _HANDLER)(instruction_t *instr) \
 
-static bool is_sub(opcode_t opcode);
+#define ADD_OP_HANDLER(op) \
+    [op] = op ## _HANDLER
 
-static bool is_mul(opcode_t opcode);
-
-static bool is_div(opcode_t opcode);
-
-static bool is_const(opcode_t opcode);
-
-static bool is_rel(opcode_t opcode);
-
-static i32 add_i32(i32 op1, i32 op2);
-
-static i64 add_i64(i64 op1, i64 op2);
-
-static f32 add_f32(f32 op1, f32 op2);
-
-static f64 add_f64(f64 op1, f64 op2);
-
-static i32 sub_i32(i32 op1, i32 op2);
-
-static i64 sub_i64(i64 op1, i64 op2);
-
-static f32 sub_f32(f32 op1, f32 op2);
-
-static f64 sub_f64(f64 op1, f64 op2);
-
-static i32 mul_i32(i32 op1, i32 op2);
-
-static i64 mul_i64(i64 op1, i64 op2);
-
-static f32 mul_f32(f32 op1, f32 op2);
-
-static f64 mul_f64(f64 op1, f64 op2);
-
-static f32 min_f32(f32 op1, f32 op2);
-
-static f64 min_f64(f64 op1, f64 op2);
-
-static f32 max_f32(f32 op1, f32 op2);
-
-static f64 max_f64(f64 op1, f64 op2);
-
-static f32 sqrt_f32(f32 op);
-
-static f64 sqrt_f64(f64 op);
-
-static f32 abs_f32(f32 op);
-
-static f64 abs_f64(f64 op);
-
-static f32 neg_f32(f32 op);
-
-static f64 neg_f64(f64 op);
-
-static f32 ceil_f32(f32 op);
-
-static f64 ceil_f64(f64 op);
-
-static f32 floor_f32(f32 op);
-
-static f64 floor_f64(f64 op);
-
-static i32 xor_i32(i32 op1, i32 op2);
-
-static i64 xor_i64(i64 op1, i64 op2);
-
-static i32 or_i32(i32 op1, i32 op2);
-
-static i64 or_i64(i64 op1, i64 op2);
-
-static i32 and_i32(i32 op1, i32 op2);
-
-static i64 and_i64(i64 op1, i64 op2);
-
-i32 eqz_i32(i32 op);
-
-i32 eq_i32(i32 op1, i32 op2);
-
-i32 ne_i32(i32 op1, i32 op2);
-
-i32 lt_i32_s(i32 op1, i32 op2);
-
-i32 lt_i32_u(u32 op1, u32 op2);
-
-i32 gt_i32_s(i32 op1, i32 op2);
-
-i32 gt_i32_u(u32 op1, u32 op2);
-
-i32 le_i32_s(i32 op1, i32 op2);
-
-i32 le_i32_u(u32 op1, u32 op2);
-
-i32 ge_i32_s(i32 op1, i32 op2);
-
-i32 ge_i32_u(u32 op1, u32 op2);
-
-i32 eqz_i64(i64 op);
-
-i32 eq_i64(i64 op1, i64 op2);
-
-i32 ne_i64(i64 op1, i64 op2);
-
-i32 lt_i64_s(i64 op1, i64 op2);
-
-i32 lt_i64_u(i64 op1, i64 op2);
-
-i32 gt_i64_s(i64 op1, i64 op2);
-
-i32 gt_i64_u(i64 op1, i64 op2);
-
-i32 le_i64_s(i64 op1, i64 op2);
-
-i32 le_i64_u(i64 op1, i64 op2);
-
-i32 ge_i64_s(i64 op1, i64 op2);
-
-i32 ge_i64_u(i64 op1, i64 op2);
-
-i32 eq_f32(f32 op1, f32 op2);
-
-i32 ne_f32(f32 op1, f32 op2);
-
-i32 lt_f32(f32 op1, f32 op2);
-
-i32 gt_f32(f32 op1, f32 op2);
-
-i32 le_f32(f32 op1, f32 op2);
-
-i32 ge_f32(f32 op1, f32 op2);
-
-i32 eq_f64(f64 op1, f64 op2);
-
-i32 ne_f64(f64 op1, f64 op2);
-
-i32 lt_f64(f64 op1, f64 op2);
-
-i32 gt_f64(f64 op1, f64 op2);
-
-i32 le_f64(f64 op1, f64 op2);
-
-i32 ge_f64(f64 op1, f64 op2);
-
-void eval_numeric_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
-
-    if (opcode == OP_I32_CONST) {
-        push_opd_i32(instr.const_i32);
-    } else if (opcode == OP_I64_CONST) {
-        push_opd_i64(instr.const_i64);
-    } else if (opcode == OP_F32_CONST) {
-        push_opd_f32(instr.const_f32);
-    } else if (opcode == OP_F64_CONST) {
-        push_opd_f64(instr.const_f64);
-    } else if (opcode == OP_F32_ADD) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(add_f32(op1, op2));
-    } else if (opcode == OP_F64_ADD) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(add_f64(op1, op2));
-    } else if (opcode == OP_I32_ADD) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(add_i32(op1, op2));
-    } else if (opcode == OP_I64_ADD) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(add_i64(op1, op2));
-    } else if (opcode == OP_F32_SUB) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(sub_f32(op1, op2));
-    } else if (opcode == OP_F64_SUB) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(sub_f64(op1, op2));
-    } else if (opcode == OP_I32_SUB) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(sub_i32(op1, op2));
-    } else if (opcode == OP_I64_SUB) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(sub_i64(op1, op2));
-    } else if (opcode == OP_F32_MUL) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(mul_f32(op1, op2));
-    } else if (opcode == OP_F64_MUL) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(mul_f64(op1, op2));
-    } else if (opcode == OP_I32_MUL) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(mul_i32(op1, op2));
-    } else if (opcode == OP_I64_MUL) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(mul_i64(op1, op2));
-    } else if (opcode == OP_F32_MIN) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(min_f32(op1, op2));
-    } else if (opcode == OP_F64_MIN) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(min_f64(op1, op2));
-    } else if (opcode == OP_F32_MAX) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_f32(max_f32(op1, op2));
-    } else if (opcode == OP_F64_MAX) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_f64(max_f64(op1, op2));
-    } else if (opcode == OP_F32_SQRT) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(sqrt_f32(op));
-    } else if (opcode == OP_F64_SQRT) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(sqrt_f64(op));
-    } else if (opcode == OP_F32_FLOOR) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(floor_f32(op));
-    } else if (opcode == OP_F64_FLOOR) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(floor_f64(op));
-    } else if (opcode == OP_F32_CEIL) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(ceil_f32(op));
-    } else if (opcode == OP_F64_CEIL) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(ceil_f64(op));
-    } else if (opcode == OP_F32_ABS) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(abs_f32(op));
-    } else if (opcode == OP_F64_ABS) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(abs_f64(op));
-    } else if (opcode == OP_F32_NEG) {
-        f32 op = pop_opd_f32();
-        push_opd_f32(neg_f32(op));
-    } else if (opcode == OP_F64_NEG) {
-        f64 op = pop_opd_f64();
-        push_opd_f64(neg_f64(op));
-    } else if (opcode == OP_I32_OR) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(or_i32(op1, op2));
-    } else if (opcode == OP_I64_OR) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(or_i64(op1, op2));
-    } else if (opcode == OP_I32_XOR) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(xor_i32(op1, op2));
-    } else if (opcode == OP_I64_XOR) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(xor_i64(op1, op2));
-    } else if (opcode == OP_I32_AND) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(and_i32(op1, op2));
-    } else if (opcode == OP_I64_AND) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i64(and_i64(op1, op2));
-    } else if (is_rel(opcode)) {
-        eval_rel(instr);
-    } else {
-        fprintf(stderr, "numeric instruction with opcode %X currently not supported\n", opcode);
-        interpreter_exit();
-    }
+OP_HANDLER(OP_I32_CONST) {
+    push_opd_i32(instr->const_i32);
 }
 
-static void eval_rel(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
-
-    if (opcode == OP_I32_EQZ) {
-        i32 op = pop_opd_i32();
-        push_opd_i32(eqz_i32(op));
-    } else if (opcode == OP_I32_EQ) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(eq_i32(op1, op2));
-    } else if (opcode == OP_I32_NE) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(ne_i32(op1, op2));
-    } else if (opcode == OP_I32_LT_S) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(lt_i32_s(op1, op2));
-    } else if (opcode == OP_I32_LT_U) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(lt_i32_u(op1, op2));
-    } else if (opcode == OP_I32_GE_S) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(ge_i32_s(op1, op2));
-    } else if (opcode == OP_I32_GE_U) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(ge_i32_u(op1, op2));
-    } else if (opcode == OP_I32_GT_S) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(gt_i32_s(op1, op2));
-    } else if (opcode == OP_I32_GT_U) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(gt_i32_u(op1, op2));
-    } else if (opcode == OP_I32_LE_S) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(le_i32_s(op1, op2));
-    } else if (opcode == OP_I32_LE_U) {
-        i32 op2 = pop_opd_i32();
-        i32 op1 = pop_opd_i32();
-        push_opd_i32(le_i32_u(op1, op2));
-    } else if (opcode == OP_I64_EQZ) {
-        i64 op = pop_opd_i64();
-        push_opd_i32(eqz_i64(op));
-    } else if (opcode == OP_I64_EQ) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(eq_i64(op1, op2));
-    } else if (opcode == OP_I64_NE) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(ne_i64(op1, op2));
-    } else if (opcode == OP_I64_LT_S) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(lt_i64_s(op1, op2));
-    } else if (opcode == OP_I64_LT_U) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(lt_i64_u(op1, op2));
-    } else if (opcode == OP_I64_GE_S) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(ge_i64_s(op1, op2));
-    } else if (opcode == OP_I64_GE_U) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(ge_i64_u(op1, op2));
-    } else if (opcode == OP_I64_GT_S) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(gt_i64_s(op1, op2));
-    } else if (opcode == OP_I64_GT_U) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(gt_i64_u(op1, op2));
-    } else if (opcode == OP_I64_LE_S) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(le_i64_s(op1, op2));
-    } else if (opcode == OP_I64_LE_U) {
-        i64 op2 = pop_opd_i64();
-        i64 op1 = pop_opd_i64();
-        push_opd_i32(le_i64_u(op1, op2));
-    } else if (opcode == OP_F32_EQ) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_i32(eq_f32(op1, op2));
-    } else if (opcode == OP_F32_NE) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_i32(ne_f32(op1, op2));
-    } else if (opcode == OP_F32_LT) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_i32(lt_f32(op1, op2));
-    } else if (opcode == OP_F32_GE) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_i32(ge_f32(op1, op2));
-    } else if (opcode == OP_F32_GT) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_i32(gt_f32(op1, op2));
-    } else if (opcode == OP_F32_LE) {
-        f32 op2 = pop_opd_f32();
-        f32 op1 = pop_opd_f32();
-        push_opd_i32(le_f32(op1, op2));
-    } else if (opcode == OP_F64_EQ) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_i32(eq_f64(op1, op2));
-    } else if (opcode == OP_F64_NE) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_i32(ne_f64(op1, op2));
-    } else if (opcode == OP_F64_LT) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_i32(lt_f64(op1, op2));
-    } else if (opcode == OP_F64_GE) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_i32(ge_f64(op1, op2));
-    } else if (opcode == OP_F64_GT) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_i32(gt_f64(op1, op2));
-    } else if (opcode == OP_F64_LE) {
-        f64 op2 = pop_opd_f64();
-        f64 op1 = pop_opd_f64();
-        push_opd_i32(le_f64(op1, op2));
-    } else {
-        interpreter_error("unknown rel opcode\n");
-    }
+OP_HANDLER(OP_I64_CONST) {
+    push_opd_i64(instr->const_i64);
 }
+
+OP_HANDLER(OP_F32_CONST) {
+    push_opd_f32(instr->const_f32);
+}
+
+OP_HANDLER(OP_F64_CONST) {
+    push_opd_f64(instr->const_f64);
+}
+
+OP_HANDLER(OP_F32_ADD) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(op1 + op2);
+}
+
+OP_HANDLER(OP_F64_ADD) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(op1 + op2);
+}
+
+OP_HANDLER(OP_I32_ADD) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 + op2);
+}
+
+OP_HANDLER(OP_I64_ADD) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i64(op1 + op2);
+}
+
+OP_HANDLER(OP_F32_SUB) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(op1 - op2);
+}
+
+OP_HANDLER(OP_F64_SUB) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(op1 - op2);
+}
+
+OP_HANDLER(OP_I32_SUB) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 - op2);
+}
+
+OP_HANDLER(OP_I64_SUB) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i64(op1 - op2);
+}
+
+OP_HANDLER(OP_F32_MUL) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(op1 * op2);
+}
+
+OP_HANDLER(OP_F64_MUL) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(op1 * op2);
+}
+
+OP_HANDLER(OP_I32_MUL) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 * op2);
+}
+
+OP_HANDLER(OP_I64_MUL) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i64(op1 * op2);
+}
+
+OP_HANDLER(OP_F32_MIN) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(op1 <= op2 ? op1 : op2);
+}
+
+OP_HANDLER(OP_F64_MIN) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(op1 <= op2 ? op1 : op2);
+}
+
+OP_HANDLER(OP_F32_MAX) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(op1 >= op2 ? op1 : op2);
+}
+
+OP_HANDLER(OP_F64_MAX) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(op1 >= op2 ? op1 : op2);
+}
+
+OP_HANDLER(OP_F32_SQRT) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(sqrtf(op));
+}
+
+OP_HANDLER(OP_F64_SQRT) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(sqrt(op));
+}
+
+OP_HANDLER(OP_F32_FLOOR) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(floorf(op));
+}
+
+OP_HANDLER(OP_F64_FLOOR) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(floor(op));
+}
+
+OP_HANDLER(OP_F32_CEIL) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(ceilf(op));
+}
+
+OP_HANDLER(OP_F64_CEIL) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(ceil(op));
+}
+
+OP_HANDLER(OP_F32_ABS) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(fabsf(op));
+}
+
+OP_HANDLER(OP_F64_ABS) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(fabs(op));
+}
+
+OP_HANDLER(OP_F32_NEG) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(-op);
+}
+
+OP_HANDLER(OP_F64_NEG) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(-op);
+}
+
+OP_HANDLER(OP_I32_OR) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 | op2);
+}
+
+OP_HANDLER(OP_I64_OR) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i64(op1 | op2);
+}
+
+OP_HANDLER(OP_I32_XOR) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 ^ op2);
+}
+
+OP_HANDLER(OP_I64_XOR) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i64(op1 ^ op2);
+}
+
+OP_HANDLER(OP_I32_AND) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 & op2);
+}
+
+OP_HANDLER(OP_I64_AND) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i64(op1 & op2);
+}
+
+OP_HANDLER(OP_I32_EQZ) {
+    i32 op = pop_opd_i32();
+    push_opd_i32(op == 0 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_EQ) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 == op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_NE) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 != op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_LT_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 < op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_LT_U) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 < op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_GE_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 >= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_GE_U) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 >= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_GT_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 > op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_GT_U) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 > op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_LE_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 <= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_LE_U) {
+    i32 op2 = pop_opd_i32();
+    i32 op1 = pop_opd_i32();
+    push_opd_i32(op1 <= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_EQZ) {
+    i64 op = pop_opd_i64();
+    push_opd_i32(op == 0 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_EQ) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i32(op1 == op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_NE) {
+    i64 op2 = pop_opd_i64();
+    i64 op1 = pop_opd_i64();
+    push_opd_i32(op1 != op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_LT_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i32(op1 < op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_LT_U) {
+    u64 op2 = (u64) pop_opd_i64();
+    u64 op1 = (u64) pop_opd_i64();
+    push_opd_i32(op1 < op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_GE_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i32(op1 >= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_GE_U) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i32(op1 >= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_GT_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i32(op1 > op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_GT_U) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i32(op1 > op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_LE_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i32(op1 <= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I64_LE_U) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i32(op1 <= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F32_EQ) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_i32(op1 == op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F32_NE) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_i32(op1 != op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F32_LT) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_i32(op1 < op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F32_GE) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_i32(op1 >= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F32_GT) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_i32(op1 > op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F32_LE) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_i32(op1 <= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F64_EQ) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_i32(op1 == op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F64_NE) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_i32(op1 != op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F64_LT) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_i32(op1 < op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F64_GE) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_i32(op1 >= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F64_GT) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_i32(op1 > op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_F64_LE) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_i32(op1 <= op2 ? 1 : 0);
+}
+
+OP_HANDLER(OP_I32_CLZ) {
+    i32 op = peek_opd_i32();
+    push_opd_i32(__builtin_clz(op));
+}
+
+OP_HANDLER(OP_I32_CTZ) {
+    i32 op = peek_opd_i32();
+    push_opd_i32(__builtin_ctz(op));
+}
+
+OP_HANDLER(OP_I32_POPCNT) {
+    i32 op = peek_opd_i32();
+    push_opd_i32(__builtin_popcount(op));
+}
+
+OP_HANDLER(OP_I32_DIV_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 / op2);
+}
+
+OP_HANDLER(OP_I32_DIV_U) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 / op2);
+}
+
+OP_HANDLER(OP_I32_REM_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 % op2);
+}
+
+OP_HANDLER(OP_I32_REM_U) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 % op2);
+}
+
+OP_HANDLER(OP_I32_SHL) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 << op2);
+}
+
+OP_HANDLER(OP_I32_SHR_U) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    push_opd_i32(op1 >> op2);
+}
+
+OP_HANDLER(OP_I32_SHR_S) {
+    s32 op2 = pop_opd_i32();
+    s32 op1 = pop_opd_i32();
+    push_opd_i32(op1 >> op2);
+}
+
+OP_HANDLER(OP_I32_ROTL) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    const unsigned int mask = (32 - 1);
+    op2 = op2 % 32;
+    op2 &= mask;
+    push_opd_i32((op1 << op2) | (op1 >> ((-op2) & mask)));
+}
+
+OP_HANDLER(OP_I32_ROTR) {
+    u32 op2 = pop_opd_i32();
+    u32 op1 = pop_opd_i32();
+    const unsigned int mask = (32 - 1);
+    op2 = op2 % 32;
+    op2 &= mask;
+    push_opd_i32((op1 >> op2) | (op1 << ((-op2) & mask)));
+}
+
+OP_HANDLER(OP_I64_CLZ) {
+    i64 op = peek_opd_i64();
+    push_opd_i64(__builtin_clzl(op));
+}
+
+OP_HANDLER(OP_I64_CTZ) {
+    i64 op = peek_opd_i64();
+    push_opd_i64(__builtin_ctzl(op));
+}
+
+OP_HANDLER(OP_I64_POPCNT) {
+    i64 op = peek_opd_i64();
+    push_opd_i64(__builtin_popcountl(op));
+}
+
+OP_HANDLER(OP_I64_DIV_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i64(op1 / op2);
+}
+
+OP_HANDLER(OP_I64_DIV_U) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i64(op1 / op2);
+}
+
+OP_HANDLER(OP_I64_REM_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i64(op1 % op2);
+}
+
+OP_HANDLER(OP_I64_REM_U) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i64(op1 % op2);
+}
+
+OP_HANDLER(OP_I64_SHL) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i64(op1 << op2);
+}
+
+OP_HANDLER(OP_I64_SHR_U) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    push_opd_i64(op1 >> op2);
+}
+
+OP_HANDLER(OP_I64_SHR_S) {
+    s64 op2 = pop_opd_i64();
+    s64 op1 = pop_opd_i64();
+    push_opd_i64(op1 >> op2);
+}
+
+OP_HANDLER(OP_I64_ROTL) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    const unsigned int mask = (64 - 1);
+    op2 = op2 % 64;
+    op2 &= mask;
+    push_opd_i64((op1 << op2) | (op1 >> ((-op2) & mask)));
+}
+
+OP_HANDLER(OP_I64_ROTR) {
+    u64 op2 = pop_opd_i64();
+    u64 op1 = pop_opd_i64();
+    const unsigned int mask = (32 - 1);
+    op2 = op2 % 64;
+    op2 &= mask;
+    push_opd_i64((op1 >> op2) | (op1 << ((-op2) & mask)));
+}
+
+OP_HANDLER(OP_F32_TRUNC) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(truncf(op));
+}
+
+OP_HANDLER(OP_F32_NEAREST) {
+    f32 op = pop_opd_f32();
+    push_opd_f32(nearbyintf(op));
+}
+
+OP_HANDLER(OP_F32_DIV) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(op1 / op2);
+}
+
+OP_HANDLER(OP_F32_COPYSIGN) {
+    f32 op2 = pop_opd_f32();
+    f32 op1 = pop_opd_f32();
+    push_opd_f32(copysignf(op1, op2));
+}
+
+OP_HANDLER(OP_F64_TRUNC) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(trunc(op));
+}
+
+OP_HANDLER(OP_F64_NEAREST) {
+    f64 op = pop_opd_f64();
+    push_opd_f64(nearbyint(op));
+}
+
+OP_HANDLER(OP_F64_DIV) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(op1 / op2);
+}
+
+OP_HANDLER(OP_F64_COPYSIGN) {
+    f64 op2 = pop_opd_f64();
+    f64 op1 = pop_opd_f64();
+    push_opd_f64(copysign(op1, op2));
+}
+
+OP_HANDLER(OP_I32_WRAP_I64) {
+    i64 op = pop_opd_i64();
+    push_opd_i32(op & BIT_MASK(i64, 32));
+}
+
+OP_HANDLER(OP_I32_TRUNC_F32_S) {
+    f32 op = pop_opd_f32();
+    push_opd_i32((s32) op);
+}
+
+OP_HANDLER(OP_I32_TRUNC_F32_U) {
+    f32 op = pop_opd_f32();
+    push_opd_i32((u32) op);
+}
+
+OP_HANDLER(OP_I32_TRUNC_F64_S) {
+    f64 op = pop_opd_f64();
+    push_opd_i32((s32) op);
+}
+
+OP_HANDLER(OP_I32_TRUNC_F64_U) {
+    f64 op = pop_opd_f64();
+    push_opd_i32((u32) op);
+}
+
+OP_HANDLER(OP_I64_EXTEND_I32_S) {
+    u64 op = pop_opd_i32();
+    if (op & 0x80000000) {
+        op = op | 0xffffffff00000000;
+    }
+    push_opd_i64(op);
+}
+
+OP_HANDLER(OP_I64_EXTEND_I32_U) {
+    i32 op = pop_opd_i32();
+    push_opd_i64((u64) op);
+}
+
+OP_HANDLER(OP_I64_TRUNC_F32_S) {
+    f32 op = pop_opd_f32();
+    push_opd_i64((s64) op);
+}
+
+OP_HANDLER(OP_I64_TRUNC_F32_U) {
+    f32 op = pop_opd_f32();
+    push_opd_i64((u64) op);
+}
+
+OP_HANDLER(OP_I64_TRUNC_F64_S) {
+    f64 op = pop_opd_f64();
+    push_opd_i64((s64) op);
+}
+
+OP_HANDLER(OP_I64_TRUNC_F64_U) {
+    f64 op = pop_opd_f64();
+    push_opd_i64((u64) op);
+}
+
+OP_HANDLER(OP_F32_CONVERT_I32_S) {
+    i32 op = pop_opd_i32();
+    push_opd_f32((s32) op);
+}
+
+OP_HANDLER(OP_F32_CONVERT_I32_U) {
+    i32 op = pop_opd_i32();
+    push_opd_f32((u32) op);
+}
+
+OP_HANDLER(OP_F32_CONVERT_I64_S) {
+    i64 op = pop_opd_i64();
+    push_opd_f32((s64) op);
+}
+
+OP_HANDLER(OP_F32_CONVERT_I64_U) {
+    i64 op = pop_opd_i64();
+    push_opd_f32((u64) op);
+}
+
+OP_HANDLER(OP_F32_DEMOTE_F64) {
+    f64 op = pop_opd_f64();
+    push_opd_f32((f32) op);
+}
+
+OP_HANDLER(OP_F64_CONVERT_I32_S) {
+    i32 op = pop_opd_i32();
+    push_opd_f64((s32) op);
+}
+
+OP_HANDLER(OP_F64_CONVERT_I32_U) {
+    i32 op = pop_opd_i32();
+    push_opd_f64((u32) op);
+}
+
+OP_HANDLER(OP_F64_CONVERT_I64_S) {
+    i64 op = pop_opd_i64();
+    push_opd_f64((s64) op);
+}
+
+OP_HANDLER(OP_F64_CONVERT_I64_U) {
+    i64 op = pop_opd_i64();
+    push_opd_f64((u64) op);
+}
+
+OP_HANDLER(OP_F64_PROMOTE_F32) {
+    f32 op = pop_opd_f32();
+    push_opd_f64((f64) op);
+}
+
+OP_HANDLER(OP_I32_REINTERPRET_F32) {
+    peek(&opd_stack)->valtype = VALTYPE_I32;
+}
+
+OP_HANDLER(OP_I64_REINTERPRET_F64) {
+    peek(&opd_stack)->valtype = VALTYPE_I64;
+}
+
+OP_HANDLER(OP_F32_REINTERPRET_I32) {
+    peek(&opd_stack)->valtype = VALTYPE_F32;
+}
+
+OP_HANDLER(OP_F64_REINTERPRET_I64) {
+    peek(&opd_stack)->valtype = VALTYPE_I64;
+}
+
+static numeric_func OP_HANDLERS[255] = {
+        ADD_OP_HANDLER(OP_I32_CONST),
+        ADD_OP_HANDLER(OP_I64_CONST),
+        ADD_OP_HANDLER(OP_F32_CONST),
+        ADD_OP_HANDLER(OP_F64_CONST),
+
+        ADD_OP_HANDLER(OP_I32_EQZ),
+        ADD_OP_HANDLER(OP_I32_EQ),
+        ADD_OP_HANDLER(OP_I32_NE),
+        ADD_OP_HANDLER(OP_I32_LT_S),
+        ADD_OP_HANDLER(OP_I32_LT_U),
+        ADD_OP_HANDLER(OP_I32_GT_S),
+        ADD_OP_HANDLER(OP_I32_GT_U),
+        ADD_OP_HANDLER(OP_I32_LE_S),
+        ADD_OP_HANDLER(OP_I32_LE_U),
+        ADD_OP_HANDLER(OP_I32_GE_S),
+        ADD_OP_HANDLER(OP_I32_GE_U),
+
+        ADD_OP_HANDLER(OP_I64_EQZ),
+        ADD_OP_HANDLER(OP_I64_EQ),
+        ADD_OP_HANDLER(OP_I64_NE),
+        ADD_OP_HANDLER(OP_I64_LT_S),
+        ADD_OP_HANDLER(OP_I64_LT_U),
+        ADD_OP_HANDLER(OP_I64_GT_S),
+        ADD_OP_HANDLER(OP_I64_GT_U),
+        ADD_OP_HANDLER(OP_I64_LE_S),
+        ADD_OP_HANDLER(OP_I64_LE_U),
+        ADD_OP_HANDLER(OP_I64_GE_S),
+        ADD_OP_HANDLER(OP_I64_GE_U),
+
+        ADD_OP_HANDLER(OP_F32_EQ),
+        ADD_OP_HANDLER(OP_F32_NE),
+        ADD_OP_HANDLER(OP_F32_LT),
+        ADD_OP_HANDLER(OP_F32_GT),
+        ADD_OP_HANDLER(OP_F32_LE),
+        ADD_OP_HANDLER(OP_F32_GE),
+
+        ADD_OP_HANDLER(OP_F64_EQ),
+        ADD_OP_HANDLER(OP_F64_NE),
+        ADD_OP_HANDLER(OP_F64_LT),
+        ADD_OP_HANDLER(OP_F64_GT),
+        ADD_OP_HANDLER(OP_F64_LE),
+        ADD_OP_HANDLER(OP_F64_GE),
+
+        ADD_OP_HANDLER(OP_I32_CLZ),
+        ADD_OP_HANDLER(OP_I32_CTZ),
+        ADD_OP_HANDLER(OP_I32_POPCNT),
+        ADD_OP_HANDLER(OP_I32_ADD),
+        ADD_OP_HANDLER(OP_I32_SUB),
+        ADD_OP_HANDLER(OP_I32_MUL),
+        ADD_OP_HANDLER(OP_I32_DIV_S),
+        ADD_OP_HANDLER(OP_I32_DIV_U),
+        ADD_OP_HANDLER(OP_I32_REM_S),
+        ADD_OP_HANDLER(OP_I32_REM_U),
+        ADD_OP_HANDLER(OP_I32_AND),
+        ADD_OP_HANDLER(OP_I32_OR),
+        ADD_OP_HANDLER(OP_I32_XOR),
+        ADD_OP_HANDLER(OP_I32_SHL),
+        ADD_OP_HANDLER(OP_I32_SHR_U),
+        ADD_OP_HANDLER(OP_I32_SHR_S),
+        ADD_OP_HANDLER(OP_I32_ROTL),
+        ADD_OP_HANDLER(OP_I32_ROTR),
+
+        ADD_OP_HANDLER(OP_I64_CLZ),
+        ADD_OP_HANDLER(OP_I64_CTZ),
+        ADD_OP_HANDLER(OP_I64_POPCNT),
+        ADD_OP_HANDLER(OP_I64_ADD),
+        ADD_OP_HANDLER(OP_I64_SUB),
+        ADD_OP_HANDLER(OP_I64_MUL),
+        ADD_OP_HANDLER(OP_I64_DIV_S),
+        ADD_OP_HANDLER(OP_I64_DIV_U),
+        ADD_OP_HANDLER(OP_I64_REM_S),
+        ADD_OP_HANDLER(OP_I64_REM_U),
+        ADD_OP_HANDLER(OP_I64_AND),
+        ADD_OP_HANDLER(OP_I64_OR),
+        ADD_OP_HANDLER(OP_I64_XOR),
+        ADD_OP_HANDLER(OP_I64_SHL),
+        ADD_OP_HANDLER(OP_I64_SHR_U),
+        ADD_OP_HANDLER(OP_I64_SHR_S),
+        ADD_OP_HANDLER(OP_I64_ROTL),
+        ADD_OP_HANDLER(OP_I64_ROTR),
+
+        ADD_OP_HANDLER(OP_F32_ABS),
+        ADD_OP_HANDLER(OP_F32_NEG),
+        ADD_OP_HANDLER(OP_F32_CEIL),
+        ADD_OP_HANDLER(OP_F32_FLOOR),
+        ADD_OP_HANDLER(OP_F32_TRUNC),
+        ADD_OP_HANDLER(OP_F32_NEAREST),
+        ADD_OP_HANDLER(OP_F32_SQRT),
+        ADD_OP_HANDLER(OP_F32_ADD),
+        ADD_OP_HANDLER(OP_F32_SUB),
+        ADD_OP_HANDLER(OP_F32_MUL),
+        ADD_OP_HANDLER(OP_F32_DIV),
+        ADD_OP_HANDLER(OP_F32_MIN),
+        ADD_OP_HANDLER(OP_F32_MAX),
+        ADD_OP_HANDLER(OP_F32_COPYSIGN),
+
+        ADD_OP_HANDLER(OP_F64_ABS),
+        ADD_OP_HANDLER(OP_F64_NEG),
+        ADD_OP_HANDLER(OP_F64_CEIL),
+        ADD_OP_HANDLER(OP_F64_FLOOR),
+        ADD_OP_HANDLER(OP_F64_TRUNC),
+        ADD_OP_HANDLER(OP_F64_NEAREST),
+        ADD_OP_HANDLER(OP_F64_SQRT),
+        ADD_OP_HANDLER(OP_F64_ADD),
+        ADD_OP_HANDLER(OP_F64_SUB),
+        ADD_OP_HANDLER(OP_F64_MUL),
+        ADD_OP_HANDLER(OP_F64_DIV),
+        ADD_OP_HANDLER(OP_F64_MIN),
+        ADD_OP_HANDLER(OP_F64_MAX),
+        ADD_OP_HANDLER(OP_F64_COPYSIGN),
+
+        ADD_OP_HANDLER(OP_I32_WRAP_I64),
+        ADD_OP_HANDLER(OP_I32_TRUNC_F32_S),
+        ADD_OP_HANDLER(OP_I32_TRUNC_F32_U),
+        ADD_OP_HANDLER(OP_I32_TRUNC_F64_S),
+        ADD_OP_HANDLER(OP_I32_TRUNC_F64_U),
+        ADD_OP_HANDLER(OP_I64_EXTEND_I32_S),
+        ADD_OP_HANDLER(OP_I64_EXTEND_I32_U),
+        ADD_OP_HANDLER(OP_I64_TRUNC_F32_S),
+        ADD_OP_HANDLER(OP_I64_TRUNC_F32_U),
+        ADD_OP_HANDLER(OP_I64_TRUNC_F64_S),
+        ADD_OP_HANDLER(OP_I64_TRUNC_F64_U),
+        ADD_OP_HANDLER(OP_F32_CONVERT_I32_S),
+        ADD_OP_HANDLER(OP_F32_CONVERT_I32_U),
+        ADD_OP_HANDLER(OP_F32_CONVERT_I64_S),
+        ADD_OP_HANDLER(OP_F32_CONVERT_I64_U),
+        ADD_OP_HANDLER(OP_F32_DEMOTE_F64),
+        ADD_OP_HANDLER(OP_F64_CONVERT_I32_S),
+        ADD_OP_HANDLER(OP_F64_CONVERT_I32_U),
+        ADD_OP_HANDLER(OP_F64_CONVERT_I64_S),
+        ADD_OP_HANDLER(OP_F64_CONVERT_I64_U),
+        ADD_OP_HANDLER(OP_F64_PROMOTE_F32),
+        ADD_OP_HANDLER(OP_I32_REINTERPRET_F32),
+        ADD_OP_HANDLER(OP_I64_REINTERPRET_F64),
+        ADD_OP_HANDLER(OP_F32_REINTERPRET_I32),
+        ADD_OP_HANDLER(OP_F64_REINTERPRET_I64),
+};
+
 
 bool is_numeric_instr(opcode_t opcode) {
-    return is_add(opcode) || is_sub(opcode) || is_mul(opcode) ||
-           is_div(opcode) || is_const(opcode) || is_rel(opcode);
+    return OP_HANDLERS[opcode] != NULL;
 }
 
-static bool is_const(opcode_t opcode) {
-    switch (opcode) {
-        case OP_I32_CONST:
-        case OP_I64_CONST:
-        case OP_F32_CONST:
-        case OP_F64_CONST:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool is_add(opcode_t opcode) {
-    switch (opcode) {
-        case OP_I32_ADD:
-        case OP_F32_ADD:
-        case OP_I64_ADD:
-        case OP_F64_ADD:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool is_sub(opcode_t opcode) {
-    switch (opcode) {
-        case OP_I32_SUB:
-        case OP_F32_SUB:
-        case OP_I64_SUB:
-        case OP_F64_SUB:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool is_mul(opcode_t opcode) {
-    switch (opcode) {
-        case OP_I32_MUL:
-        case OP_F32_MUL:
-        case OP_I64_MUL:
-        case OP_F64_MUL:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool is_div(opcode_t opcode) {
-    switch (opcode) {
-        case OP_I32_DIV_S:
-        case OP_I32_DIV_U:
-        case OP_F32_DIV:
-        case OP_I64_DIV_S:
-        case OP_I64_DIV_U:
-        case OP_F64_DIV:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static bool is_rel(opcode_t opcode) {
-    switch (opcode) {
-        case OP_I32_LT_S:
-        case OP_I32_LT_U:
-        case OP_I32_GE_S:
-        case OP_I32_GE_U:
-        case OP_I32_GT_S:
-        case OP_I32_GT_U:
-        case OP_I32_LE_S:
-        case OP_I32_LE_U:
-        case OP_I32_EQ:
-        case OP_I32_NE:
-        case OP_I64_LT_S:
-        case OP_I64_LT_U:
-        case OP_I64_GE_S:
-        case OP_I64_GE_U:
-        case OP_I64_GT_S:
-        case OP_I64_GT_U:
-        case OP_I64_LE_S:
-        case OP_I64_LE_U:
-        case OP_I64_EQ:
-        case OP_I64_NE:
-        case OP_F32_LT:
-        case OP_F32_GE:
-        case OP_F32_GT:
-        case OP_F32_LE:
-        case OP_F32_EQ:
-        case OP_F32_NE:
-        case OP_F64_LT:
-        case OP_F64_GE:
-        case OP_F64_GT:
-        case OP_F64_LE:
-        case OP_F64_EQ:
-        case OP_F64_NE:
-        case OP_I32_EQZ:
-        case OP_I64_EQZ:
-            return true;
-        default:
-            return false;
-    }
-}
-
-/* Actual numeric functions */
-
-i32 add_i32(i32 op1, i32 op2) {
-    return op1 + op2;
-}
-
-i64 add_i64(i64 op1, i64 op2) {
-    return op1 + op2;
-}
-
-f32 add_f32(f32 op1, f32 op2) {
-    return op1 + op2;
-}
-
-f64 add_f64(f64 op1, f64 op2) {
-    return op1 + op2;
-}
-
-i32 sub_i32(i32 op1, i32 op2) {
-    return op1 - op2;
-}
-
-i64 sub_i64(i64 op1, i64 op2) {
-    return op1 - op2;
-}
-
-f32 sub_f32(f32 op1, f32 op2) {
-    return op1 - op2;
-}
-
-f64 sub_f64(f64 op1, f64 op2) {
-    return op1 - op2;
-}
-
-i32 mul_i32(i32 op1, i32 op2) {
-    return op1 * op2;
-}
-
-i64 mul_i64(i64 op1, i64 op2) {
-    return op1 * op2;
-}
-
-f32 mul_f32(f32 op1, f32 op2) {
-    return op1 * op2;
-}
-
-f64 mul_f64(f64 op1, f64 op2) {
-    return op1 * op2;
-}
-
-f32 min_f32(f32 op1, f32 op2) {
-    return op1 <= op2 ? op1 : op2;
-}
-
-f64 min_f64(f64 op1, f64 op2) {
-    return op1 <= op2 ? op1 : op2;
-}
-
-f32 max_f32(f32 op1, f32 op2) {
-    return op1 >= op2 ? op1 : op2;
-}
-
-f64 max_f64(f64 op1, f64 op2) {
-    return op1 >= op2 ? op1 : op2;
-}
-
-f32 sqrt_f32(f32 op) {
-    return sqrtf(op);
-}
-
-f64 sqrt_f64(f64 op) {
-    return sqrt(op);
-}
-
-f32 abs_f32(f32 op) {
-    return fabsf(op);
-}
-
-f64 abs_f64(f64 op) {
-    return fabs(op);
-}
-
-f32 neg_f32(f32 op) {
-    return -op;
-}
-
-f64 neg_f64(f64 op) {
-    return -op;
-}
-
-f32 ceil_f32(f32 op) {
-    return ceilf(op);
-}
-
-f64 ceil_f64(f64 op) {
-    return ceil(op);
-}
-
-f32 floor_f32(f32 op) {
-    return floorf(op);
-}
-
-f64 floor_f64(f64 op) {
-    return floor(op);
-}
-
-i32 xor_i32(i32 op1, i32 op2) {
-    return op1 ^ op2;
-}
-
-i64 xor_i64(i64 op1, i64 op2) {
-    return op1 ^ op2;
-}
-
-i32 or_i32(i32 op1, i32 op2) {
-    return op1 | op2;
-}
-
-i64 or_i64(i64 op1, i64 op2) {
-    return op1 | op2;
-}
-
-i32 and_i32(i32 op1, i32 op2) {
-    return op1 & op2;
-}
-
-i64 and_i64(i64 op1, i64 op2) {
-    return op1 & op2;
-}
-
-i32 eqz_i32(i32 op) {
-    return op == 0 ? 1 : 0;
-}
-
-i32 eq_i32(i32 op1, i32 op2) {
-    return op1 == op2 ? 1 : 0;
-}
-
-i32 ne_i32(i32 op1, i32 op2) {
-    return op1 != op2 ? 1 : 0;
-}
-
-i32 lt_i32_s(i32 op1, i32 op2) {
-    return op1 < op2 ? 1 : 0;
-}
-
-i32 lt_i32_u(u32 op1, u32 op2) {
-    return op1 < op2 ? 1 : 0;
-}
-
-i32 gt_i32_s(i32 op1, i32 op2) {
-    return op1 > op2 ? 1 : 0;
-}
-
-i32 gt_i32_u(u32 op1, u32 op2) {
-    return op1 > op2 ? 1 : 0;
-}
-
-i32 le_i32_s(i32 op1, i32 op2) {
-    return op1 <= op2 ? 1 : 0;
-}
-
-i32 le_i32_u(u32 op1, u32 op2) {
-    return op1 <= op2 ? 1 : 0;
-}
-
-i32 ge_i32_s(i32 op1, i32 op2) {
-    return op1 >= op2 ? 1 : 0;
-}
-
-i32 ge_i32_u(u32 op1, u32 op2) {
-    return op1 >= op2 ? 1 : 0;
-}
-
-i32 eqz_i64(i64 op) {
-    return op == 0 ? 1 : 0;
-}
-
-i32 eq_i64(i64 op1, i64 op2) {
-    return op1 == op2 ? 1 : 0;
-}
-
-i32 ne_i64(i64 op1, i64 op2) {
-    return op1 != op2 ? 1 : 0;
-}
-
-i32 lt_i64_s(i64 op1, i64 op2) {
-    return op1 < op2 ? 1 : 0;
-}
-
-i32 lt_i64_u(i64 op1, i64 op2) {
-    return op1 < op2 ? 1 : 0;
-}
-
-i32 gt_i64_s(i64 op1, i64 op2) {
-    return op1 > op2 ? 1 : 0;
-}
-
-i32 gt_i64_u(i64 op1, i64 op2) {
-    return op1 > op2 ? 1 : 0;
-}
-
-i32 le_i64_s(i64 op1, i64 op2) {
-    return op1 <= op2 ? 1 : 0;
-}
-
-i32 le_i64_u(i64 op1, i64 op2) {
-    return op1 <= op2 ? 1 : 0;
-}
-
-i32 ge_i64_s(i64 op1, i64 op2) {
-    return op1 >= op2 ? 1 : 0;
-}
-
-i32 ge_i64_u(i64 op1, i64 op2) {
-    return op1 >= op2 ? 1 : 0;
-}
-
-i32 eq_f32(f32 op1, f32 op2) {
-    return op1 == op2 ? 1 : 0;
-}
-
-i32 ne_f32(f32 op1, f32 op2) {
-    return op1 != op2 ? 1 : 0;
-}
-
-i32 lt_f32(f32 op1, f32 op2) {
-    return op1 < op2 ? 1 : 0;
-}
-
-i32 gt_f32(f32 op1, f32 op2) {
-    return op1 > op2 ? 1 : 0;
-}
-
-i32 le_f32(f32 op1, f32 op2) {
-    return op1 <= op2 ? 1 : 0;
-}
-
-i32 ge_f32(f32 op1, f32 op2) {
-    return op1 >= op2 ? 1 : 0;
-}
-
-i32 eq_f64(f64 op1, f64 op2) {
-    return op1 == op2 ? 1 : 0;
-}
-
-i32 ne_f64(f64 op1, f64 op2) {
-    return op1 != op2 ? 1 : 0;
-}
-
-i32 lt_f64(f64 op1, f64 op2) {
-    return op1 < op2 ? 1 : 0;
-}
-
-i32 gt_f64(f64 op1, f64 op2) {
-    return op1 > op2 ? 1 : 0;
-}
-
-i32 le_f64(f64 op1, f64 op2) {
-    return op1 <= op2 ? 1 : 0;
-}
-
-i32 ge_f64(f64 op1, f64 op2) {
-    return op1 >= op2 ? 1 : 0;
+void eval_numeric_instr(instruction_t *instr) {
+    OP_HANDLERS[instr->opcode](instr);
 }

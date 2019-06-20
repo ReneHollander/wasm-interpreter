@@ -62,6 +62,8 @@ f64 peek_f64(stack *s);
 
 valtype_t peek_valtype(stack *s);
 
+entry *peek(stack *s);
+
 void push_label(stack *s);
 
 bool pop_label(stack *s);

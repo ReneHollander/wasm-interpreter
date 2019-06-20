@@ -187,7 +187,7 @@ void eval_instr(instruction_t instr) {
     opcode_t opcode = instr.opcode;
 
     if (is_numeric_instr(opcode)) {
-        eval_numeric_instr(instr);
+        eval_numeric_instr(&instr);
     } else if (is_variable_instr(opcode)) {
         eval_variable_instr(instr);
     } else if (is_control_instr(opcode)) {
