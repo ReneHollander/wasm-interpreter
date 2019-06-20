@@ -26,10 +26,10 @@ void parse_arg(char *str, parameter_value_t *param) {
     char *value_str = strtok(NULL, ":");
     if (strcmp(type_str, "i32") == 0) {
         param->type = VALTYPE_I32;
-        param->val.i32 = (i32) strtol(value_str, NULL, 10);
+        param->val.i32 = (i32) strtoul(value_str, NULL, 10);
     } else if (strcmp(type_str, "i64") == 0) {
         param->type = VALTYPE_I64;
-        param->val.i64 = (i64) strtol(value_str, NULL, 10);
+        param->val.i64 = (i64) strtoul(value_str, NULL, 10);
     } else if (strcmp(type_str, "f32") == 0) {
         param->type = VALTYPE_F32;
         param->val.f32 = strtof(value_str, NULL);
@@ -94,10 +94,10 @@ int main(int argc, char *argv[]) {
     } else {
         switch (ret.type) {
             case VALTYPE_I32:
-                printf("i32:%d", ret.val.i32);
+                printf("i32:%u", ret.val.i32);
                 break;
             case VALTYPE_I64:
-                printf("i64:%ld", ret.val.i64);
+                printf("i64:%lu", ret.val.i64);
                 break;
             case VALTYPE_F32:
                 printf("f32:%f", ret.val.f32);
