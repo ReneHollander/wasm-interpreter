@@ -421,12 +421,12 @@ OP_HANDLER(OP_F64_LE) {
 
 OP_HANDLER(OP_I32_CLZ) {
     i32 op = peek_opd_i32();
-    push_opd_i32(__builtin_clz(op));
+    push_opd_i32(op == 0 ? 32 : __builtin_clz(op));
 }
 
 OP_HANDLER(OP_I32_CTZ) {
     i32 op = peek_opd_i32();
-    push_opd_i32(__builtin_ctz(op));
+    push_opd_i32(op == 0 ? 32 : __builtin_ctz(op));
 }
 
 OP_HANDLER(OP_I32_POPCNT) {
@@ -496,12 +496,12 @@ OP_HANDLER(OP_I32_ROTR) {
 
 OP_HANDLER(OP_I64_CLZ) {
     i64 op = peek_opd_i64();
-    push_opd_i64(__builtin_clzl(op));
+    push_opd_i64(op == 0 ? 64 : __builtin_clzl(op));
 }
 
 OP_HANDLER(OP_I64_CTZ) {
     i64 op = peek_opd_i64();
-    push_opd_i64(__builtin_ctzl(op));
+    push_opd_i64(op == 0 ? 64 : __builtin_ctzl(op));
 }
 
 OP_HANDLER(OP_I64_POPCNT) {
