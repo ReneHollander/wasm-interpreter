@@ -110,25 +110,53 @@ OP_HANDLER(OP_I64_MUL) {
 OP_HANDLER(OP_F32_MIN) {
     f32 op2 = pop_opd_f32();
     f32 op1 = pop_opd_f32();
-    push_opd_f32(op1 <= op2 ? op1 : op2);
+
+    if (isnan(op1)) {
+        push_opd_f32(op1);
+    } else if (isnan(op2)) {
+        push_opd_f32(op2);
+    } else {
+        push_opd_f32(op1 <= op2 ? op1 : op2);
+    }
 }
 
 OP_HANDLER(OP_F64_MIN) {
     f64 op2 = pop_opd_f64();
     f64 op1 = pop_opd_f64();
-    push_opd_f64(op1 <= op2 ? op1 : op2);
+
+    if (isnan(op1)) {
+        push_opd_f64(op1);
+    } else if (isnan(op2)) {
+        push_opd_f64(op2);
+    } else {
+        push_opd_f64(op1 <= op2 ? op1 : op2);
+    }
 }
 
 OP_HANDLER(OP_F32_MAX) {
     f32 op2 = pop_opd_f32();
     f32 op1 = pop_opd_f32();
-    push_opd_f32(op1 >= op2 ? op1 : op2);
+
+    if (isnan(op1)) {
+        push_opd_f32(op1);
+    } else if (isnan(op2)) {
+        push_opd_f32(op2);
+    } else {
+        push_opd_f32(op1 >= op2 ? op1 : op2);
+    }
 }
 
 OP_HANDLER(OP_F64_MAX) {
     f64 op2 = pop_opd_f64();
     f64 op1 = pop_opd_f64();
-    push_opd_f64(op1 >= op2 ? op1 : op2);
+
+    if (isnan(op1)) {
+        push_opd_f64(op1);
+    } else if (isnan(op2)) {
+        push_opd_f64(op2);
+    } else {
+        push_opd_f64(op1 >= op2 ? op1 : op2);
+    }
 }
 
 OP_HANDLER(OP_F32_SQRT) {
