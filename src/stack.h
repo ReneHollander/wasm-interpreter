@@ -1,6 +1,5 @@
 #include<stdbool.h>
 #include "type.h"
-#include "control.h"
 
 #ifndef WASM_INTERPRETER_STACK_H
 #define WASM_INTERPRETER_STACK_H

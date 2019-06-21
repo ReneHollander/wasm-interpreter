@@ -11,57 +11,60 @@
 #include "control.h"
 #include "opd_stack.h"
 #include "strings.h"
+#include "eval_types.h"
 
-static void init(void);
+static void init(eval_state_t *eval_state);
 
-static void eval_parametric_instr(instruction_t *instr);
+static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr);
 
-static void eval_global_instrs(vec_instruction_t *instructions);
+static void eval_global_instrs(eval_state_t *eval_state, vec_instruction_t *instructions);
 
 static bool is_parametric_instr(const opcode_t *opcode);
 
-static void eval_select(void);
+static void eval_select(eval_state_t *eval_state);
 
-static func_t *find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name);
+static func_t *find_func(eval_state_t *eval_state, char *func_name);
 
-static instruction_t *fetch_next_instr(void);
+static instruction_t *fetch_next_instr(eval_state_t *eval_state);
 
 /* Intended to call a specific exported function */
 return_value_t interpret_function(module_t *module, char *func_name, node_t *args) {
-    module_global = module;
-    init();
+    eval_state_t *eval_state = malloc(sizeof(eval_state_t));
+
+    eval_state->module = module;
+    init(eval_state);
 
     if (module->exports == NULL || module->types == NULL || module->funcs == NULL) {
-        interpreter_error("could not find all required sections \n");
+        interpreter_error(eval_state, "could not find all required sections \n");
     }
 
-    func_t *func = find_func(module->exports, module->funcs, func_name);
+    func_t *func = find_func(eval_state, func_name);
     for (int i = 0; i < length(&args); i++) {
         parameter_value_t *param = get_at(&args, i);
-        push_generic(param->type, &param->val);
+        push_generic(eval_state, param->type, &param->val);
     }
 
-    eval_call(func);
+    eval_call(eval_state, func);
 
     return_value_t return_value = {0};
-    vec_valtype_t *fun_output = module_global->types->values[func->type].t2;
+    vec_valtype_t *fun_output = eval_state->module->types->values[func->type].t2;
     if (fun_output->length == 1) {
         return_value.type = fun_output->values[0];
-        pop_generic(fun_output->values[0], &return_value.val);
+        pop_generic(eval_state, fun_output->values[0], &return_value.val);
     } else if (fun_output->length > 1) {
-        interpreter_error("more than one result is not supported currently\n");
+        interpreter_error(eval_state, "more than one result is not supported currently\n");
     }
 
     //if the operand stack is not empty, something went wrong
-    if (!stack_is_empty(&opd_stack)) {
-        print_stack(&opd_stack);
-        interpreter_error("operand stack is not empty");
+    if (!stack_is_empty(eval_state->opd_stack)) {
+        print_stack(eval_state->opd_stack);
+        interpreter_error(eval_state, "operand stack is not empty");
     }
 
     return return_value;
 }
 
-void init_datas(vec_data_t *_datas) {
+void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
     if (_datas == NULL) {
         return;
     }
@@ -69,110 +72,115 @@ void init_datas(vec_data_t *_datas) {
     if (_datas->length == 0) return;
 
     if (_datas->length > 1) {
-        interpreter_error("only one data section allowed");
+        interpreter_error(eval_state, "only one data section allowed");
     }
 
     memory_t *memory = get_current_memory();
     if (memory == NULL) {
-        interpreter_error("no memory found");
+        interpreter_error(eval_state, "no memory found");
     }
 
     data_t data = _datas->values[0];
     if (data.memidx != 0) {
-        interpreter_error("data section only for memory with index 0 supported");
+        interpreter_error(eval_state, "data section only for memory with index 0 supported");
     }
 
     for (int j = 0; j < data.expression.instructions->length; j++) {
-        eval_instr(&data.expression.instructions->values[j]);
+        eval_instr(eval_state, &data.expression.instructions->values[j]);
     }
 
     //the result of the expression should be on the operand stack now, so we can consume it
     valtype_t result_type;
     val_t val;
-    pop_unknown(&result_type, &val);
+    pop_unknown(eval_state, &result_type, &val);
     if (result_type != VALTYPE_I32) {
-        interpreter_error("data expression does not evaluate to i32");
+        interpreter_error(eval_state, "data expression does not evaluate to i32");
     }
     i32 offset = val.i32;
 
     if (memory->size * PAGE_SIZE < offset + data.init->length) {
-        interpreter_error("data section does not fit into memory");
+        interpreter_error(eval_state, "data section does not fit into memory");
     }
 
     memcpy(memory->data + offset, data.init->values, data.init->length);
 }
 
-static void init(void) {
-    stack_init(&opd_stack, 1000);
-
+static void init(eval_state_t *eval_state) {
     bool hasMem = false;
     memtype_t memtype = {0};
 
-    if (module_global->mems != NULL) {
-        if (module_global->mems->length > 1) {
-            interpreter_error("only one memory section supported");
+    stack *opd_stack = malloc(sizeof(stack));
+    stack_init(opd_stack, 1000);
+    list_init(&eval_state->frames);
+    list_init(&eval_state->globals);
+    eval_state->opd_stack = opd_stack;
+
+    if (eval_state->module->mems != NULL) {
+        if (eval_state->module->mems->length > 1) {
+            interpreter_error(eval_state, "only one memory section supported");
         }
-        memtype = module_global->mems->values[0];
+        memtype = eval_state->module->mems->values[0];
         memory_t *mem = create_memory(memtype.lim.min);
         use_memory(mem);
     }
-    if (module_global->imports != NULL) {
-        for (int i = 0; i < module_global->imports->length; i++) {
-            if (module_global->imports->values[i].desc == IMPORTDESC_MEM) {
+    if (eval_state->module->imports != NULL) {
+        for (int i = 0; i < eval_state->module->imports->length; i++) {
+            if (eval_state->module->imports->values[i].desc == IMPORTDESC_MEM) {
                 if (hasMem) {
-                    interpreter_error("only one memory import supported");
+                    interpreter_error(eval_state, "only one memory import supported");
                 } else {
-                    memtype = module_global->imports->values[i].mem;
+                    memtype = eval_state->module->imports->values[i].mem;
                     hasMem = true;
                 }
             }
         }
     }
     if (hasMem) {
-        init_memory(memtype);
+        init_memory(eval_state, memtype);
     }
-    init_globals(module_global->globals);
-    init_datas(module_global->data);
+    init_globals(eval_state, eval_state->module->globals);
+    init_datas(eval_state, eval_state->module->data);
 }
 
-static func_t *find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name) {
+static func_t *find_func(eval_state_t *eval_state, char *func_name) {
     funcidx idx = -1;
 
-    for (int i = 0; i < exports->length; i++) {
-        if (strcmp(func_name, exports->values[i].name) == 0
-            && exports->values[i].desc == EXPORTDESC_FUNC) {
-            idx = exports->values[i].func;
+    for (int i = 0; i < eval_state->module->exports->length; i++) {
+        if (strcmp(func_name, eval_state->module->exports->values[i].name) == 0
+            && eval_state->module->exports->values[i].desc == EXPORTDESC_FUNC) {
+            idx = eval_state->module->exports->values[i].func;
         }
     }
 
     if (idx == -1) {
         fprintf(stderr, "could not find function with name: %s in exports\n", func_name);
-        interpreter_exit();
+        interpreter_exit(eval_state);
     }
 
-    return &funcs->values[idx];
+    return &eval_state->module->funcs->values[idx];
 }
 
-void eval_instrs(void) {
+void eval_instrs(eval_state_t *eval_state) {
     instruction_t *instr;
 
-    while ((instr = fetch_next_instr()) != NULL) {
-        eval_instr(instr);
+    while ((instr = fetch_next_instr(eval_state)) != NULL) {
+
+        eval_instr(eval_state, instr);
     }
 }
 
-static instruction_t *fetch_next_instr(void) {
+static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
     frame_t *frame;
 
-    while ((frame = peek_frame()) != NULL) {
+    while ((frame = peek_frame(eval_state)) != NULL) {
         //if the ip is past the last instruction - clean all but the result argument and pop the frame
         if (frame->ip >= frame->instrs->length) {
             if (frame->context == FUNCTION_CONTEXT) {
-                clean_to_func_marker();
+                clean_to_func_marker(eval_state);
             } else if (frame->context == CONTROL_CONTEXT || frame->context == LOOP_CONTEXT) {
-                clean_to_label();
+                clean_to_label(eval_state);
             }
-            pop_frame();
+            pop_frame(eval_state);
             continue;
         }
 
@@ -180,22 +188,22 @@ static instruction_t *fetch_next_instr(void) {
     }
 }
 
-void eval_instr(instruction_t *instr) {
+void eval_instr(eval_state_t *eval_state, instruction_t *instr) {
     opcode_t *opcode = &instr->opcode;
 
     if (is_numeric_instr(opcode)) {
-        eval_numeric_instr(instr);
+        eval_numeric_instr(eval_state, instr);
     } else if (is_variable_instr(opcode)) {
-        eval_variable_instr(instr);
+        eval_variable_instr(eval_state, instr);
     } else if (is_control_instr(opcode)) {
-        eval_control_instr(instr);
+        eval_control_instr(eval_state, instr);
     } else if (is_parametric_instr(opcode)) {
-        eval_parametric_instr(instr);
+        eval_parametric_instr(eval_state, instr);
     } else if (is_memory_instr(opcode)) {
-        eval_memory_instr(*instr);
+        eval_memory_instr(eval_state, *instr);
     } else {
         fprintf(stderr, "not yet implemented instruction %s (opcode 0x%x)\n", opcode2str(*opcode), *opcode);
-        interpreter_exit();
+        interpreter_exit(eval_state);
     }
 }
 
@@ -209,40 +217,44 @@ static bool is_parametric_instr(const opcode_t *opcode) {
     }
 }
 
-static void eval_parametric_instr(instruction_t *instr) {
+static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr) {
     opcode_t opcode = instr->opcode;
 
     if (opcode == OP_DROP) {
-        drop(&opd_stack);
+        drop(eval_state->opd_stack);
     } else if (opcode == OP_SELECT) {
-        eval_select();
+        eval_select(eval_state);
     } else {
         fprintf(stderr, "not yet implemented parametric instruction (opcode %x)\n", opcode);
-        interpreter_exit();
+        interpreter_exit(eval_state);
     }
 }
 
-static void eval_select(void) {
-    i32 c = pop_opd_i32();
-    valtype_t valtype = peek_valtype(&opd_stack);
+static void eval_select(eval_state_t *eval_state) {
+    i32 c = pop_opd_i32(eval_state);
+    valtype_t valtype = peek_valtype(eval_state->opd_stack);
     val_t val1;
     val_t val2;
-    pop_generic(valtype, &val2);
-    pop_generic(valtype, &val1);
+    pop_generic(eval_state, valtype, &val2);
+    pop_generic(eval_state, valtype, &val1);
 
     if (c != 0) {
-        push_generic(valtype, &val1);
+        push_generic(eval_state, valtype, &val1);
     } else {
-        push_generic(valtype, &val2);
+        push_generic(eval_state, valtype, &val2);
     }
 }
 
-void interpreter_error(char *err_message) {
+void interpreter_error(eval_state_t *eval_state, char *err_message) {
     fprintf(stderr, "%s\n", err_message);
-    interpreter_exit();
+    interpreter_exit(eval_state);
 }
 
-void interpreter_exit(void) {
-    destroy(&opd_stack);
+void interpreter_exit(eval_state_t *eval_state) {
+    if (eval_state != NULL) {
+        destroy(eval_state->opd_stack);
+        free(eval_state->opd_stack);
+        free(eval_state);
+    }
     exit(EXIT_FAILURE);
 }

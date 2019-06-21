@@ -10,6 +10,8 @@ typedef struct node {
     void *data;
 } node_t;
 
+void list_init(node_t **head_ref);
+
 void insert_first(node_t **head_ref, void *new_data, uint32_t data_size);
 
 void insert_last(node_t **head_ref, void *new_data, uint32_t data_size);

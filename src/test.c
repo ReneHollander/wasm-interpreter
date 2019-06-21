@@ -107,7 +107,7 @@ int main(int argc, char *argv[]) {
                 break;
             default:
                 fprintf(stderr, "unknown return valtype");
-                interpreter_exit();
+                interpreter_exit(NULL);
         }
     }
 

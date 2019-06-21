@@ -6,6 +6,10 @@
 #include <stdbool.h>
 #include "list.h"
 
+void list_init(node_t **head_ref){
+    *head_ref = NULL;
+}
+
 void insert_first(node_t **head_ref, void *new_data, uint32_t data_size) {
     node_t *new_node = (node_t *) malloc(sizeof(node_t));
 

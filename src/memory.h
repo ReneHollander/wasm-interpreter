@@ -3,6 +3,7 @@
 
 #include "value.h"
 #include "instruction.h"
+#include "interpreter.h"
 
 #define PAGE_SIZE (65536)
 
@@ -20,10 +21,10 @@ memory_t *get_current_memory();
 
 void free_memory(memory_t *m);
 
-void init_memory(memtype_t mem);
+void init_memory(eval_state_t *eval_state, memtype_t mem);
 
 bool is_memory_instr(const opcode_t *opcode);
 
-void eval_memory_instr(instruction_t instr);
+void eval_memory_instr(eval_state_t *eval_state, instruction_t instr);
 
 #endif //WASM_INTERPRETER_MEMORY_H

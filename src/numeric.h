@@ -3,9 +3,10 @@
 
 #include "type.h"
 #include "instruction.h"
+#include "interpreter.h"
 
 bool is_numeric_instr(const opcode_t *opcode);
 
-void eval_numeric_instr(instruction_t *instr);
+void eval_numeric_instr(eval_state_t *eval_state, instruction_t *instr);
 
 #endif //WASM_INTERPRETER_NUMERIC_H
