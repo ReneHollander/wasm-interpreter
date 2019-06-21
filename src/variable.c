@@ -12,9 +12,9 @@
 
 static void init_param(valtype_t param_valtype);
 
-static void init_local(locals_t local);
+static void init_local(locals_t *local);
 
-static void init_global(global_t global);
+static void init_global(global_t *global);
 
 static void eval_global_instrs(vec_instruction_t *instructions);
 
@@ -89,24 +89,24 @@ static node_t *frames;
 /* Head pointer for list of globals */
 static node_t *globals;
 
-void eval_variable_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
+void eval_variable_instr(instruction_t *instr) {
+    opcode_t opcode = (*instr).opcode;
 
     switch (opcode) {
         case OP_LOCAL_GET:
-            eval_local_get(instr.localidx);
+            eval_local_get((*instr).localidx);
             break;
         case OP_LOCAL_SET:
-            eval_local_set(instr.localidx);
+            eval_local_set((*instr).localidx);
             break;
         case OP_LOCAL_TEE:
-            eval_local_tee(instr.localidx);
+            eval_local_tee((*instr).localidx);
             break;
         case OP_GLOBAL_GET:
-            eval_global_get(instr.globalidx);
+            eval_global_get((*instr).globalidx);
             break;
         case OP_GLOBAL_SET:
-            eval_global_set(instr.globalidx);
+            eval_global_set((*instr).globalidx);
             break;
         default:
             fprintf(stderr, "variable instruction with opcode %X currently not supported\n", opcode);
@@ -144,13 +144,13 @@ static void init_param(valtype_t param_valtype) {
 void init_locals(vec_locals_t *locals) {
     //insert in reverse order so we have them in the correct order within the list
     for (int i = locals->length - 1; i >= 0; i--) {
-        init_local(locals->values[i]);
+        init_local(&locals->values[i]);
     }
 }
 
-static void init_local(locals_t local) {
-    for (int i = 0; i < local.n; i++) {
-        switch (local.t) {
+static void init_local(locals_t *local) {
+    for (int i = 0; i < local->n; i++) {
+        switch (local->t) {
             case VALTYPE_I32:
                 insert_local_i32(0);
                 break;
@@ -164,7 +164,7 @@ static void init_local(locals_t local) {
                 insert_local_f64(0);
                 break;
             default:
-                fprintf(stderr, "unknown valtype for local: %d\n", local.t);
+                fprintf(stderr, "unknown valtype for local: %d\n", local->t);
                 interpreter_exit();
         }
     }
@@ -177,15 +177,15 @@ void init_globals(vec_global_t *_globals) {
 
     //insert in reverse order so we have them in the correct order within the list
     for (int i = _globals->length - 1; i >= 0; i--) {
-        init_global(_globals->values[i]);
+        init_global(&_globals->values[i]);
     }
 }
 
-static void init_global(global_t global) {
-    eval_global_instrs(global.e.instructions);
+static void init_global(global_t *global) {
+    eval_global_instrs(global->e.instructions);
 
     //the result of the expression should be on the operand stack now, so we can consume it
-    switch (global.gt.t) {
+    switch (global->gt.t) {
         case VALTYPE_I32:
             insert_global_i32(pop_opd_i32());
             break;
@@ -199,7 +199,7 @@ static void init_global(global_t global) {
             insert_global_f64(pop_opd_f64());
             break;
         default:
-            fprintf(stderr, "unknown global valtype: %X", global.gt.t);
+            fprintf(stderr, "unknown global valtype: %X", global->gt.t);
             interpreter_exit();
     }
 }
@@ -208,7 +208,7 @@ static void eval_global_instrs(vec_instruction_t *instructions) {
     u32 length = instructions->length;
 
     for (int i = 0; i < length; i++) {
-        eval_instr(instructions->values[i]);
+        eval_instr(&instructions->values[i]);
     }
 }
 
@@ -322,8 +322,8 @@ void eval_global_set(localidx idx) {
     }
 }
 
-bool is_variable_instr(opcode_t opcode) {
-    switch (opcode) {
+bool is_variable_instr(const opcode_t *opcode) {
+    switch (*opcode) {
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
         case OP_LOCAL_TEE:

@@ -47,8 +47,8 @@ void init_memory(memtype_t mem) {
     }
 }
 
-bool is_memory_instr(opcode_t opcode) {
-    switch (opcode) {
+bool is_memory_instr(const opcode_t *opcode) {
+    switch (*opcode) {
         case OP_I32_LOAD:
         case OP_I64_LOAD:
         case OP_F32_LOAD:

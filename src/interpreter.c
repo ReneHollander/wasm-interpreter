@@ -14,15 +14,15 @@
 
 static void init(void);
 
-static void eval_parametric_instr(instruction_t instr);
+static void eval_parametric_instr(instruction_t *instr);
 
 static void eval_global_instrs(vec_instruction_t *instructions);
 
-static bool is_parametric_instr(opcode_t opcode);
+static bool is_parametric_instr(const opcode_t *opcode);
 
 static void eval_select(void);
 
-static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name);
+static func_t *find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name);
 
 static instruction_t *fetch_next_instr(void);
 
@@ -35,7 +35,7 @@ return_value_t interpret_function(module_t *module, char *func_name, node_t *arg
         interpreter_error("could not find all required sections \n");
     }
 
-    func_t func = find_func(module->exports, module->funcs, func_name);
+    func_t *func = find_func(module->exports, module->funcs, func_name);
     for (int i = 0; i < length(&args); i++) {
         parameter_value_t *param = get_at(&args, i);
         push_generic(param->type, &param->val);
@@ -44,7 +44,7 @@ return_value_t interpret_function(module_t *module, char *func_name, node_t *arg
     eval_call(func);
 
     return_value_t return_value = {0};
-    vec_valtype_t *fun_output = module_global->types->values[func.type].t2;
+    vec_valtype_t *fun_output = module_global->types->values[func->type].t2;
     if (fun_output->length == 1) {
         return_value.type = fun_output->values[0];
         pop_generic(fun_output->values[0], &return_value.val);
@@ -83,7 +83,7 @@ void init_datas(vec_data_t *_datas) {
     }
 
     for (int j = 0; j < data.expression.instructions->length; j++) {
-        eval_instr(data.expression.instructions->values[j]);
+        eval_instr(&data.expression.instructions->values[j]);
     }
 
     //the result of the expression should be on the operand stack now, so we can consume it
@@ -135,7 +135,7 @@ static void init(void) {
     init_datas(module_global->data);
 }
 
-static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name) {
+static func_t *find_func(vec_export_t *exports, vec_func_t *funcs, char *func_name) {
     funcidx idx = -1;
 
     for (int i = 0; i < exports->length; i++) {
@@ -150,14 +150,14 @@ static func_t find_func(vec_export_t *exports, vec_func_t *funcs, char *func_nam
         interpreter_exit();
     }
 
-    return funcs->values[idx];
+    return &funcs->values[idx];
 }
 
 void eval_instrs(void) {
     instruction_t *instr;
 
     while ((instr = fetch_next_instr()) != NULL) {
-        eval_instr(*instr);
+        eval_instr(instr);
     }
 }
 
@@ -180,11 +180,11 @@ static instruction_t *fetch_next_instr(void) {
     }
 }
 
-void eval_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
+void eval_instr(instruction_t *instr) {
+    opcode_t *opcode = &instr->opcode;
 
     if (is_numeric_instr(opcode)) {
-        eval_numeric_instr(&instr);
+        eval_numeric_instr(instr);
     } else if (is_variable_instr(opcode)) {
         eval_variable_instr(instr);
     } else if (is_control_instr(opcode)) {
@@ -192,15 +192,15 @@ void eval_instr(instruction_t instr) {
     } else if (is_parametric_instr(opcode)) {
         eval_parametric_instr(instr);
     } else if (is_memory_instr(opcode)) {
-        eval_memory_instr(instr);
+        eval_memory_instr(*instr);
     } else {
-        fprintf(stderr, "not yet implemented instruction %s (opcode 0x%x)\n", opcode2str(opcode), opcode);
+        fprintf(stderr, "not yet implemented instruction %s (opcode 0x%x)\n", opcode2str(*opcode), *opcode);
         interpreter_exit();
     }
 }
 
-static bool is_parametric_instr(opcode_t opcode) {
-    switch (opcode) {
+static bool is_parametric_instr(const opcode_t *opcode) {
+    switch (*opcode) {
         case OP_DROP:
         case OP_SELECT:
             return true;
@@ -209,8 +209,8 @@ static bool is_parametric_instr(opcode_t opcode) {
     }
 }
 
-static void eval_parametric_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
+static void eval_parametric_instr(instruction_t *instr) {
+    opcode_t opcode = instr->opcode;
 
     if (opcode == OP_DROP) {
         drop(&opd_stack);

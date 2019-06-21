@@ -39,9 +39,9 @@ typedef struct frame {
     valtype_t result_type;          //type of result (if any)
 } frame_t;
 
-bool is_variable_instr(opcode_t opcode);
+bool is_variable_instr(const opcode_t *opcode);
 
-void eval_variable_instr(instruction_t instr);
+void eval_variable_instr(instruction_t *instr);
 
 void init_globals(vec_global_t *_globals);
 

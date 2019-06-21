@@ -905,8 +905,8 @@ static numeric_func OP_HANDLERS[255] = {
 };
 
 
-bool is_numeric_instr(opcode_t opcode) {
-    return OP_HANDLERS[opcode] != NULL;
+bool is_numeric_instr(const opcode_t *opcode) {
+    return OP_HANDLERS[*opcode] != NULL;
 }
 
 void eval_numeric_instr(instruction_t *instr) {

@@ -12,24 +12,24 @@
 
 static void eval_return(void);
 
-static void eval_br(instruction_t instr);
+static void eval_br(instruction_t *instr);
 
-static void eval_if(instruction_t instr);
+static void eval_if(instruction_t *instr);
 
-static void eval_br_if(instruction_t instr);
+static void eval_br_if(instruction_t *instr);
 
-static void eval_loop(instruction_t instr);
+static void eval_loop(instruction_t *instr);
 
-static void eval_block(instruction_t instr);
+static void eval_block(instruction_t *instr);
 
-static void eval_br_table(instruction_t instr);
+static void eval_br_table(instruction_t *instr);
 
 
-void eval_control_instr(instruction_t instr) {
-    opcode_t opcode = instr.opcode;
+void eval_control_instr(instruction_t *instr) {
+    opcode_t opcode = instr->opcode;
 
     if (opcode == OP_CALL) {
-        eval_call(module_global->funcs->values[instr.funcidx]);
+        eval_call(&module_global->funcs->values[instr->funcidx]);
     } else if (opcode == OP_NOP) {
         //do nothing
     } else if (opcode == OP_UNREACHABLE) {
@@ -54,13 +54,13 @@ void eval_control_instr(instruction_t instr) {
     }
 }
 
-void eval_call(func_t func) {
-    vec_valtype_t *fun_output = module_global->types->values[func.type].t2;
-    push_frame(func.expression.instructions, fun_output->length, fun_output->values[0], FUNCTION_CONTEXT);
+void eval_call(func_t *func) {
+    vec_valtype_t *fun_output = module_global->types->values[func->type].t2;
+    push_frame(func->expression.instructions, fun_output->length, fun_output->values[0], FUNCTION_CONTEXT);
 
     //first we init the locals and afterwards the params because we want the params to come first in the list
-    init_locals(func.locals);
-    init_params(module_global->types->values[func.type].t1);
+    init_locals(func->locals);
+    init_params(module_global->types->values[func->type].t1);
     push_func_marker(&opd_stack);
     eval_instrs();
 }
@@ -78,7 +78,7 @@ static void eval_return(void) {
     }
 }
 
-static void eval_br_if(instruction_t instr) {
+static void eval_br_if(instruction_t *instr) {
     i32 val = pop_opd_i32();
 
     if (val != 0) {
@@ -86,54 +86,55 @@ static void eval_br_if(instruction_t instr) {
     }
 }
 
-static void eval_br_table(instruction_t instr) {
+static void eval_br_table(instruction_t *instr) {
     i32 index = pop_opd_i32();
-    vec_labelidx_t *labels = instr.table.labels;
+    vec_labelidx_t *labels = instr->table.labels;
 
     if (index < labels->length) {
-        instr.labelidx = labels->values[index];
+        instr->labelidx = labels->values[index];
         eval_br(instr);
     } else {
-        instr.labelidx = instr.table.default_label;
+        instr->labelidx = instr->table.default_label;
         eval_br(instr);
     }
 }
 
-static void eval_block(instruction_t instr) {
-    u32 arity = instr.block.resulttype.empty ? 0 : 1;
+static void eval_block(instruction_t *instr) {
+    u32 arity = instr->block.resulttype.empty ? 0 : 1;
     push_label(&opd_stack);
-    push_frame(instr.block.instructions, arity, instr.block.resulttype.type, CONTROL_CONTEXT);
+    push_frame(instr->block.instructions, arity, instr->block.resulttype.type, CONTROL_CONTEXT);
 }
 
-static void eval_loop(instruction_t instr) {
-    u32 arity = instr.block.resulttype.empty ? 0 : 1;
+static void eval_loop(instruction_t *instr) {
+    u32 arity = instr->block.resulttype.empty ? 0 : 1;
     push_label(&opd_stack);
-    push_frame(instr.block.instructions, arity, instr.block.resulttype.type, LOOP_CONTEXT);
+    push_frame(instr->block.instructions, arity, instr->block.resulttype.type, LOOP_CONTEXT);
 }
 
-static void eval_if(instruction_t instr) {
-    u32 arity = instr.if_block.resulttype.empty ? 0 : 1;
+static void eval_if(instruction_t *instr) {
+    u32 arity = instr->if_block.resulttype.empty ? 0 : 1;
     i32 val = pop_opd_i32();
     push_label(&opd_stack);
 
     if (val != 0) {
-        push_frame(instr.if_block.ifpath, arity, instr.if_block.resulttype.type, CONTROL_CONTEXT);
-    } else if (instr.if_block.elsepath != NULL) {
-        push_frame(instr.if_block.elsepath, arity, instr.if_block.resulttype.type, CONTROL_CONTEXT);
+        push_frame(instr->if_block.ifpath, arity, instr->if_block.resulttype.type, CONTROL_CONTEXT);
+    } else if (instr->if_block.elsepath != NULL) {
+        push_frame(instr->if_block.elsepath, arity, instr->if_block.resulttype.type, CONTROL_CONTEXT);
     }
 }
 
-static void eval_br(instruction_t instr) {
+static void eval_br(instruction_t *instr) {
     frame_t *frame = peek_frame();
     bool has_result = frame->arity > 0 ? true : false;
     val_t val;
+    labelidx labelidx = instr->labelidx;
 
     //loop jumps do not save result values
-    if (has_result && (frame->context != LOOP_CONTEXT || instr.labelidx > 0)) {
+    if (has_result && (frame->context != LOOP_CONTEXT || labelidx > 0)) {
         pop_generic(frame->result_type, &val);
     }
 
-    for (int32_t lbl_idx = instr.labelidx; lbl_idx >= 0; lbl_idx--) {
+    for (int32_t lbl_idx = labelidx; lbl_idx >= 0; lbl_idx--) {
         while (!pop_label_or_func_marker(&opd_stack));
         frame_t *current = peek_frame();
 
@@ -148,13 +149,13 @@ static void eval_br(instruction_t instr) {
         }
     }
 
-    if (has_result && (frame->context != LOOP_CONTEXT || instr.labelidx > 0)) {
+    if (has_result && (frame->context != LOOP_CONTEXT || labelidx > 0)) {
         push_generic(frame->result_type, &val);
     }
 }
 
-bool is_control_instr(opcode_t opcode) {
-    switch (opcode) {
+bool is_control_instr(const opcode_t *opcode) {
+    switch (*opcode) {
         case OP_NOP:
         case OP_UNREACHABLE:
         case OP_BLOCK:

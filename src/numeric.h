@@ -4,7 +4,7 @@
 #include "type.h"
 #include "instruction.h"
 
-bool is_numeric_instr(opcode_t opcode);
+bool is_numeric_instr(const opcode_t *opcode);
 
 void eval_numeric_instr(instruction_t *instr);
 

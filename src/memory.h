@@ -22,7 +22,7 @@ void free_memory(memory_t *m);
 
 void init_memory(memtype_t mem);
 
-bool is_memory_instr(opcode_t opcode);
+bool is_memory_instr(const opcode_t *opcode);
 
 void eval_memory_instr(instruction_t instr);
 
