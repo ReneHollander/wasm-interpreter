@@ -24,6 +24,8 @@ static void eval_block(eval_state_t *eval_state, instruction_t *instr);
 
 static void eval_br_table(eval_state_t *eval_state, instruction_t *instr);
 
+static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr);
+
 
 void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
     opcode_t opcode = instr->opcode;
@@ -48,6 +50,8 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
         eval_return(eval_state);
     } else if (opcode == OP_BR_TABLE) {
         eval_br_table(eval_state, instr);
+    } else if (opcode == OP_CALL_INDIRECT) {
+        eval_call_indirect(eval_state, instr);
     } else {
         fprintf(stderr, "not yet implemented control instruction (opcode %x)\n", opcode);
         interpreter_exit(eval_state);
@@ -63,6 +67,18 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
     init_params(eval_state, eval_state->module->types->values[func->type].t1);
     push_func_marker(eval_state->opd_stack);
     eval_instrs(eval_state);
+}
+
+static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
+    i32 offset = pop_i32(eval_state->opd_stack);
+    table_entry_t *table_entry = get_at(&eval_state->table, offset);
+
+    if (!table_entry->initialized) {
+        interpreter_error(eval_state, "call_indirect referencing uninitialized table entry\n");
+    }
+
+    func_t *func = &eval_state->module->funcs->values[table_entry->funcidx];
+    eval_call(eval_state, func);
 }
 
 static void eval_return(eval_state_t *eval_state) {

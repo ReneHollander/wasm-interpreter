@@ -9,6 +9,7 @@
 typedef struct eval_state {
     node_t *frames;     /* Head pointer to list of stack and control frames */
     node_t *globals;    /* Head pointer to list of globals */
+    node_t *table;      /* Head pointer to list of table entries */
     stack *opd_stack;   /* Pointer to operand stack */
     module_t *module;   /* Pointer to current module */
 } eval_state_t;
@@ -55,5 +56,10 @@ typedef struct frame {
                                         or a control frame used for control operations, or a loop frame */
     valtype_t result_type;          //type of result (if any)
 } frame_t;
+
+typedef struct table_entry {
+    bool initialized;
+    funcidx funcidx;
+} table_entry_t;
 
 #endif //WASM_INTERPRETER_EVAL_TYPES_H

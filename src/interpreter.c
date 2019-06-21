@@ -12,6 +12,7 @@
 #include "opd_stack.h"
 #include "strings.h"
 #include "eval_types.h"
+#include "table.h"
 
 static void init(eval_state_t *eval_state);
 
@@ -113,6 +114,7 @@ static void init(eval_state_t *eval_state) {
     stack_init(opd_stack, 1000);
     list_init(&eval_state->frames);
     list_init(&eval_state->globals);
+    list_init(&eval_state->table);
     eval_state->opd_stack = opd_stack;
 
     if (eval_state->module->mems != NULL) {
@@ -138,6 +140,7 @@ static void init(eval_state_t *eval_state) {
     if (hasMem) {
         init_memory(eval_state, memtype);
     }
+    init_tables(eval_state);
     init_globals(eval_state, eval_state->module->globals);
     init_datas(eval_state, eval_state->module->data);
 }
