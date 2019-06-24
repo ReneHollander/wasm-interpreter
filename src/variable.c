@@ -380,7 +380,6 @@ frame_t *peek_func_frame(eval_state_t *eval_state) {
         if (((frame_t *) cur->data)->context == FUNCTION_CONTEXT) {
             return cur->data;
         }
-
         cur = cur->next;
     }
 

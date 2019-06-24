@@ -705,6 +705,47 @@ static void parse_section(parser_state_t *state, section_t *section) {
     }
 }
 
+static void handle_imports(module_t *module, parse_error_f parse_error) {
+    if (module->imports != NULL) {
+        uint32_t func_count = 0;
+        uint32_t global_count = 0;
+
+        for (int i = 0; i < module->imports->length; i++) {
+            import_t import = module->imports->values[i];
+
+            if (import.desc == IMPORTDESC_FUNC) {
+                func_count++;
+            } else if (import.desc == IMPORTDESC_TABLE) {
+                //do nothing for now
+            } else if (import.desc == IMPORTDESC_GLOBAL) {
+                global_count++;
+            } else if (import.desc == IMPORTDESC_MEM) {
+                //do nothing for now
+            } else {
+                parse_error("unknown import desc");
+            }
+        }
+
+        func_count += module->funcs->length;
+        module->funcs = realloc(module->funcs, sizeof(vec_func_t) + (sizeof(func_t) * func_count));
+
+        for (int i = func_count - 1; i >= 0; i--) {
+            if (i - module->funcs->length >= 0) {
+                module->funcs->values[i] = module->funcs->values[i - module->funcs->length];
+            }
+        }
+
+        global_count += module->globals->length;
+        module->globals = realloc(module->globals, sizeof(vec_global_t) + sizeof(globaltype_t) * global_count);
+
+        for (int i = global_count - 1; i >= 0; i--) {
+            if (i - module->globals->length >= 0) {
+                module->globals->values[i] = module->globals->values[i - module->globals->length];
+            }
+        }
+    }
+}
+
 module_t *parse(FILE *input_file, parse_error_f parse_error) {
     parser_state_t state;
     state.input = input_file;
@@ -777,6 +818,8 @@ module_t *parse(FILE *input_file, parse_error_f parse_error) {
     for (u32 i = 0; i < function_section.functions->length; i++) {
         module->funcs->values[i].type = function_section.functions->values[i];
     }
+
+    handle_imports(module, parse_error);
 
     return module;
 }

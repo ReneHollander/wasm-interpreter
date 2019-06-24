@@ -13,6 +13,7 @@
 #include "strings.h"
 #include "eval_types.h"
 #include "table.h"
+#include "import.h"
 
 static void init(eval_state_t *eval_state);
 
@@ -23,8 +24,6 @@ static void eval_global_instrs(eval_state_t *eval_state, vec_instruction_t *inst
 static bool is_parametric_instr(const opcode_t *opcode);
 
 static void eval_select(eval_state_t *eval_state);
-
-static func_t *find_func(eval_state_t *eval_state, char *func_name);
 
 static instruction_t *fetch_next_instr(eval_state_t *eval_state);
 
@@ -39,7 +38,7 @@ return_value_t interpret_function(module_t *module, char *func_name, node_t *arg
         interpreter_error(eval_state, "could not find all required sections \n");
     }
 
-    func_t *func = find_func(eval_state, func_name);
+    func_t *func = find_exported_func(eval_state, eval_state->module, func_name);
     for (int i = 0; i < length(&args); i++) {
         parameter_value_t *param = get_at(&args, i);
         push_generic(eval_state, param->type, &param->val);
@@ -115,6 +114,7 @@ static void init(eval_state_t *eval_state) {
     list_init(&eval_state->frames);
     list_init(&eval_state->globals);
     list_init(&eval_state->table);
+    list_init(&eval_state->modules);
     eval_state->opd_stack = opd_stack;
 
     if (eval_state->module->mems != NULL) {
@@ -137,6 +137,8 @@ static void init(eval_state_t *eval_state) {
             }
         }
     }
+    //TODO fill eval_state->modules with all parsed modules
+    //TODO uncomment: init_imports(eval_state, eval_state->module->imports);
     if (hasMem) {
         init_memory(eval_state, memtype);
     }
@@ -149,37 +151,14 @@ static void init(eval_state_t *eval_state) {
     }
 }
 
-static func_t *find_func(eval_state_t *eval_state, char *func_name) {
-    funcidx idx = -1;
-
-    for (int i = 0; i < eval_state->module->exports->length; i++) {
-        if (strcmp(func_name, eval_state->module->exports->values[i].name) == 0
-            && eval_state->module->exports->values[i].desc == EXPORTDESC_FUNC) {
-            idx = eval_state->module->exports->values[i].func;
-        }
-    }
-
-    if (idx == -1) {
-        fprintf(stderr, "could not find function with name: %s in exports\n", func_name);
-        interpreter_exit(eval_state);
-    }
-
-    return &eval_state->module->funcs->values[idx];
-}
-
 void eval_instrs(eval_state_t *eval_state) {
-    instruction_t *instr;
-
-    while ((instr = fetch_next_instr(eval_state)) != NULL) {
-
+    for (instruction_t *instr; (instr = fetch_next_instr(eval_state)) != NULL;) {
         eval_instr(eval_state, instr);
     }
 }
 
 static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
-    frame_t *frame;
-
-    while ((frame = peek_frame(eval_state)) != NULL) {
+    for (frame_t *frame; (frame = peek_frame(eval_state)) != NULL;) {
         //if the ip is past the last instruction - clean all but the result argument and pop the frame
         if (frame->ip >= frame->instrs->length) {
             if (frame->context == FUNCTION_CONTEXT) {

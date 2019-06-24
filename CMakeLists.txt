@@ -32,7 +32,9 @@ add_library(wasm_interpreter
         src/opd_stack.h
         src/eval_types.h
         src/table.c
-        src/table.h)
+        src/table.h
+        src/import.c
+        src/import.h)
 set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
 target_link_libraries(wasm_interpreter m)
 

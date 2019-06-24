@@ -173,6 +173,7 @@ typedef struct module {
     funcidx start;
     vec_import_t *imports;
     vec_export_t *exports;
+    name name;
 } module_t;
 
 #endif // MODULE_H

@@ -84,8 +84,7 @@ static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
 static void eval_return(eval_state_t *eval_state) {
     clean_to_func_marker(eval_state);
 
-    frame_t *frame;
-    while ((frame = peek_frame(eval_state)) != NULL) {
+    for (frame_t *frame; (frame = peek_frame(eval_state)) != NULL;) {
         context_t context = frame->context;
         pop_frame(eval_state);
         if (context == FUNCTION_CONTEXT) {

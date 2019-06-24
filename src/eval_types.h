@@ -10,6 +10,7 @@ typedef struct eval_state {
     node_t *frames;     /* Head pointer to list of stack and control frames */
     node_t *globals;    /* Head pointer to list of globals */
     node_t *table;      /* Head pointer to list of table entries */
+    node_t *modules;    /* Head pointer to list of all parsed modules */
     stack *opd_stack;   /* Pointer to operand stack */
     module_t *module;   /* Pointer to current module */
 } eval_state_t;
