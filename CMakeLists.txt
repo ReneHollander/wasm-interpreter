@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 3.14)
 
 project(wasm_interpreter C)
 
-add_library(wasm_parser
+add_library(parser
         src/type.h
         src/instruction.h
         src/module.h
@@ -11,9 +11,9 @@ add_library(wasm_parser
         src/parser.h
         src/parser.c
         )
-set_property(TARGET wasm_parser PROPERTY C_STANDARD 99)
+set_property(TARGET parser PROPERTY C_STANDARD 99)
 
-add_library(wasm_interpreter
+add_library(interpreter
         src/interpreter.c
         src/interpreter.h
         src/stack.c
@@ -35,19 +35,12 @@ add_library(wasm_interpreter
         src/table.h
         src/import.c
         src/import.h)
-set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
-target_link_libraries(wasm_interpreter m)
+set_property(TARGET interpreter PROPERTY C_STANDARD 99)
+target_link_libraries(interpreter m)
 
-add_executable(main
+add_executable(wasm_interpreter
         src/main.c
         )
-set_property(TARGET main PROPERTY C_STANDARD 99)
-target_link_libraries(main wasm_parser)
-target_link_libraries(main wasm_interpreter)
-
-add_executable(test_runner
-        src/test.c
-        )
-set_property(TARGET test_runner PROPERTY C_STANDARD 99)
-target_link_libraries(test_runner wasm_parser)
-target_link_libraries(test_runner wasm_interpreter)
+set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
+target_link_libraries(wasm_interpreter parser)
+target_link_libraries(wasm_interpreter interpreter)

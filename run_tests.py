@@ -10,7 +10,7 @@ import math
 hide_successes = True
 test_dir = 'test/'
 test_build_dir = 'test/build/'
-test_binary = 'cmake-build-debug/test_runner'
+test_binary = 'cmake-build-debug/wasm_interpreter'
 
 skip_suites = [
     'names',

@@ -15,8 +15,6 @@
 #include "table.h"
 #include "import.h"
 
-static void init(eval_state_t *eval_state);
-
 static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr);
 
 static void eval_global_instrs(eval_state_t *eval_state, vec_instruction_t *instructions);
@@ -27,17 +25,26 @@ static void eval_select(eval_state_t *eval_state);
 
 static instruction_t *fetch_next_instr(eval_state_t *eval_state);
 
+eval_state_t *create_interpreter() {
+    eval_state_t *eval_state = calloc(sizeof(eval_state_t), 1);
+
+    stack *opd_stack = malloc(sizeof(stack));
+    stack_init(opd_stack, 1000);
+    eval_state->opd_stack = opd_stack;
+    list_init(&eval_state->frames);
+    list_init(&eval_state->globals);
+    list_init(&eval_state->table);
+    list_init(&eval_state->modules);
+
+    return eval_state;
+}
+
+void free_interpreter(eval_state_t *eval_state) {
+    // TODO: Proper cleanup.
+}
+
 /* Intended to call a specific exported function */
-return_value_t interpret_function(module_t *module, char *func_name, node_t *args) {
-    eval_state_t *eval_state = malloc(sizeof(eval_state_t));
-
-    eval_state->module = module;
-    init(eval_state);
-
-    if (module->exports == NULL || module->types == NULL || module->funcs == NULL) {
-        interpreter_error(eval_state, "could not find all required sections \n");
-    }
-
+return_value_t interpret_function(eval_state_t* eval_state, char *func_name, node_t *args) {
     func_t *func = find_exported_func(eval_state, eval_state->module, func_name);
     for (int i = 0; i < length(&args); i++) {
         parameter_value_t *param = get_at(&args, i);
@@ -105,17 +112,9 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
     memcpy(memory->data + offset, data.init->values, data.init->length);
 }
 
-static void init(eval_state_t *eval_state) {
+void init_interpreter(eval_state_t *eval_state) {
     bool hasMem = false;
     memtype_t memtype = {0};
-
-    stack *opd_stack = malloc(sizeof(stack));
-    stack_init(opd_stack, 1000);
-    list_init(&eval_state->frames);
-    list_init(&eval_state->globals);
-    list_init(&eval_state->table);
-    list_init(&eval_state->modules);
-    eval_state->opd_stack = opd_stack;
 
     if (eval_state->module->mems != NULL) {
         if (eval_state->module->mems->length > 1) {
@@ -148,6 +147,10 @@ static void init(eval_state_t *eval_state) {
 
     if (eval_state->module->has_start) {
         eval_call(eval_state, &eval_state->module->funcs->values[eval_state->module->start]);
+    }
+
+    if (eval_state->module->exports == NULL || eval_state->module->types == NULL || eval_state->module->funcs == NULL) {
+        interpreter_error(eval_state, "could not find all required sections \n");
     }
 }
 
@@ -237,10 +240,6 @@ void interpreter_error(eval_state_t *eval_state, char *err_message) {
 }
 
 void interpreter_exit(eval_state_t *eval_state) {
-    if (eval_state != NULL) {
-        destroy(eval_state->opd_stack);
-        free(eval_state->opd_stack);
-        free(eval_state);
-    }
+    free_interpreter(eval_state);
     exit(EXIT_FAILURE);
 }

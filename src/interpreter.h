@@ -5,9 +5,13 @@
 #include "stack.h"
 #include "variable.h"
 
-void interpret(module_t *module);
+eval_state_t *create_interpreter();
 
-return_value_t interpret_function(module_t *module, char *func_name, node_t *args);
+void init_interpreter(eval_state_t *eval_state);
+
+void free_interpreter(eval_state_t *eval_state);
+
+return_value_t interpret_function(eval_state_t* eval_state, char *func_name, node_t *args);
 
 void interpreter_error(eval_state_t *eval_state, char *err_message);
 
