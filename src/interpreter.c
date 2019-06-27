@@ -52,6 +52,7 @@ return_value_t interpret_function(eval_state_t* eval_state, char *func_name, nod
     }
 
     eval_call(eval_state, func);
+    eval_instrs(eval_state);
 
     return_value_t return_value = {0};
     vec_valtype_t *fun_output = eval_state->module->types->values[func->type].t2;
@@ -147,6 +148,7 @@ void init_interpreter(eval_state_t *eval_state) {
 
     if (eval_state->module->has_start) {
         eval_call(eval_state, &eval_state->module->funcs->values[eval_state->module->start]);
+        eval_instrs(eval_state);
     }
 
     if (eval_state->module->exports == NULL || eval_state->module->types == NULL || eval_state->module->funcs == NULL) {

@@ -66,7 +66,6 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
     init_locals(eval_state, func->locals);
     init_params(eval_state, eval_state->module->types->values[func->type].t1);
     push_func_marker(eval_state->opd_stack);
-    eval_instrs(eval_state);
 }
 
 static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
