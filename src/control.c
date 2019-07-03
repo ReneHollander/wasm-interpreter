@@ -138,15 +138,13 @@ static void eval_if(eval_state_t *eval_state, instruction_t *instr) {
 }
 
 static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
-    frame_t *frame = peek_frame(eval_state);
+    labelidx labelidx = instr->labelidx;
+    frame_t *frame = peek_frame_at(eval_state, labelidx);
     bool has_result = frame->arity > 0 ? true : false;
     val_t val;
-    labelidx labelidx = instr->labelidx;
-    context_t context = frame->context;
     valtype_t result_type = frame->result_type;
 
-    //loop jumps do not save result values
-    if (has_result && (frame->context != LOOP_CONTEXT || labelidx > 0)) {
+    if (has_result) {
         pop_generic(eval_state, frame->result_type, &val);
     }
 
@@ -165,7 +163,7 @@ static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
         }
     }
 
-    if (has_result && (context != LOOP_CONTEXT || labelidx > 0)) {
+    if (has_result) {
         push_generic(eval_state, result_type, &val);
     }
 }

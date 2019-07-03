@@ -272,7 +272,7 @@ void eval_local_tee(eval_state_t *eval_state, localidx idx) {
     }
 }
 
-void eval_global_get(eval_state_t *eval_state, localidx idx) {
+void eval_global_get(eval_state_t *eval_state, globalidx idx) {
     valtype_t valtype = get_global_valtype(eval_state, idx);
 
     switch (valtype) {
@@ -294,7 +294,7 @@ void eval_global_get(eval_state_t *eval_state, localidx idx) {
     }
 }
 
-void eval_global_set(eval_state_t *eval_state, localidx idx) {
+void eval_global_set(eval_state_t *eval_state, globalidx idx) {
     valtype_t valtype = get_global_valtype(eval_state, idx);
 
     switch (valtype) {
@@ -352,6 +352,10 @@ static valtype_t get_global_valtype(eval_state_t *eval_state, globalidx idx) {
 }
 
 /* Frame operations start here */
+
+frame_t *peek_frame_at(eval_state_t *eval_state, int idx) {
+    return (frame_t *) get_at(&eval_state->frames, idx);
+}
 
 void push_frame(eval_state_t *eval_state, vec_instruction_t *instrs,
                 uint32_t arity, valtype_t result_type, context_t context) {
