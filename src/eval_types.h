@@ -49,13 +49,14 @@ typedef enum context {
 } context_t;
 
 typedef struct frame {
-    node_t *locals;                 //parameters followed by local variables
-    uint32_t ip;                    //index of the next instruction to be executed
-    vec_instruction_t *instrs;      //pointer to the vector of instructions
-    uint32_t arity;                 //number of result arguments (<= 1)
-    context_t context;              /*indicates whether this is a stack frame used for function calls,
+    uint32_t ip;                    /* Index of the next instruction to be executed */
+    vec_instruction_t *instrs;      /* Pointer to the vector of instructions */
+    uint32_t arity;                 /* Number of result arguments (<= 1) */
+    context_t context;              /* Indicates whether this is a stack frame used for function calls,
                                         or a control frame used for control operations, or a loop frame */
-    valtype_t result_type;          //type of result (if any)
+    valtype_t result_type;          /* Type of result (if any) */
+    localidx num_locals;             /* Number of local variables + parameters */
+    local_entry_t *locals;          /* Array of parameters followed by local variables */
 } frame_t;
 
 typedef struct table_entry {

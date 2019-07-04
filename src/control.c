@@ -61,10 +61,22 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
 void eval_call(eval_state_t *eval_state, func_t *func) {
     vec_valtype_t *fun_output = eval_state->module->types->values[func->type].t2;
     push_frame(eval_state, func->expression.instructions, fun_output->length, fun_output->values[0], FUNCTION_CONTEXT);
+    frame_t *current = peek_frame(eval_state);
 
-    //first we init the locals and afterwards the params because we want the params to come first in the list
-    init_locals(eval_state, func->locals);
+    u32 num_params = eval_state->module->types->values[func->type].t1->length;
+    u32 num_locals = 0;
+
+    for (int i = 0; i < func->locals->length; i++) {
+        num_locals += func->locals->values[i].n;
+    }
+
+    uint32_t num_total = num_locals + num_params;
+    //size to be allocated = (number of local variables + number of parameters) * (number of elements)
+    current->locals = malloc(num_total * sizeof(local_entry_t));
+    current->num_locals = num_total;
+
     init_params(eval_state, eval_state->module->types->values[func->type].t1);
+    init_locals(eval_state, func->locals, num_params);
     push_func_marker(eval_state->opd_stack);
 }
 

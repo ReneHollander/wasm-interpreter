@@ -10,11 +10,11 @@
 #include "interpreter.h"
 #include "opd_stack.h"
 
-static void init_param(eval_state_t *eval_state, valtype_t param_valtype);
+static void init_param(eval_state_t *eval_state, valtype_t param_valtype, localidx idx);
 
-static void init_local(eval_state_t *eval_state, locals_t *local);
+static void init_local(eval_state_t *eval_state, locals_t *local, uint32_t offset);
 
-static void init_global(eval_state_t *eval_state, global_t *global);
+static void init_global(eval_state_t *eval_state, global_t *global, globalidx idx);
 
 static void eval_global_instrs(eval_state_t *eval_state, vec_instruction_t *instructions);
 
@@ -23,50 +23,50 @@ static valtype_t get_local_valtype(eval_state_t *eval_state, localidx idx);
 static valtype_t get_global_valtype(eval_state_t *eval_state, localidx idx);
 
 /* local operations */
-static void insert_local_i32(eval_state_t *eval_state, i32 val);
+static void insert_local_i32(eval_state_t *eval_state, i32 val, localidx idx);
 
 static i32 get_local_i32(eval_state_t *eval_state, localidx idx);
 
 static void set_local_i32(eval_state_t *eval_state, localidx idx, i32 val);
 
-static void insert_local_i64(eval_state_t *eval_state, i64 val);
+static void insert_local_i64(eval_state_t *eval_state, i64 val, localidx idx);
 
 static i64 get_local_i64(eval_state_t *eval_state, localidx idx);
 
 static void set_local_i64(eval_state_t *eval_state, localidx idx, i64 val);
 
-static void insert_local_f32(eval_state_t *eval_state, f32 val);
+static void insert_local_f32(eval_state_t *eval_state, f32 val, localidx idx);
 
 static f32 get_local_f32(eval_state_t *eval_state, localidx idx);
 
 static void set_local_f32(eval_state_t *eval_state, localidx idx, f32 val);
 
-static void insert_local_f64(eval_state_t *eval_state, f64 val);
+static void insert_local_f64(eval_state_t *eval_state, f64 val, localidx idx);
 
 static f64 get_local_f64(eval_state_t *eval_state, localidx idx);
 
 static void set_local_f64(eval_state_t *eval_state, localidx idx, f64 val);
 
 /* global operations */
-static void insert_global_i32(eval_state_t *eval_state, i32 val);
+static void insert_global_i32(eval_state_t *eval_state, globalidx idx, i32 val);
 
 static i32 get_global_i32(eval_state_t *eval_state, globalidx idx);
 
 static void set_global_i32(eval_state_t *eval_state, globalidx idx, i32 val);
 
-static void insert_global_i64(eval_state_t *eval_state, i64 val);
+static void insert_global_i64(eval_state_t *eval_state, globalidx idx, i64 val);
 
 static i64 get_global_i64(eval_state_t *eval_state, globalidx idx);
 
 static void set_global_i64(eval_state_t *eval_state, globalidx idx, i64 val);
 
-static void insert_global_f32(eval_state_t *eval_state, f32 val);
+static void insert_global_f32(eval_state_t *eval_state, globalidx idx, f32 val);
 
 static f32 get_global_f32(eval_state_t *eval_state, globalidx idx);
 
 static void set_global_f32(eval_state_t *eval_state, globalidx idx, f32 val);
 
-static void insert_global_f64(eval_state_t *eval_state, f64 val);
+static void insert_global_f64(eval_state_t *eval_state, globalidx idx, f64 val);
 
 static f64 get_global_f64(eval_state_t *eval_state, globalidx idx);
 
@@ -109,53 +109,52 @@ void eval_variable_instr(eval_state_t *eval_state, instruction_t *instr) {
 }
 
 void init_params(eval_state_t *eval_state, vec_valtype_t *params) {
-    //insert in reverse order so we have them in the correct order within the list
     for (int i = params->length - 1; i >= 0; i--) {
-        init_param(eval_state, params->values[i]);
+        init_param(eval_state, params->values[i], i);
     }
 }
 
-static void init_param(eval_state_t *eval_state, valtype_t param_valtype) {
+static void init_param(eval_state_t *eval_state, valtype_t param_valtype, localidx idx) {
     //we consume the function params from the stack here
     switch (param_valtype) {
         case VALTYPE_I32:
-            insert_local_i32(eval_state, pop_opd_i32(eval_state));
+            insert_local_i32(eval_state, pop_opd_i32(eval_state), idx);
             break;
         case VALTYPE_I64:
-            insert_local_i64(eval_state, pop_opd_i64(eval_state));
+            insert_local_i64(eval_state, pop_opd_i64(eval_state), idx);
             break;
         case VALTYPE_F32:
-            insert_local_f32(eval_state, pop_opd_f32(eval_state));
+            insert_local_f32(eval_state, pop_opd_f32(eval_state), idx);
             break;
         case VALTYPE_F64:
-            insert_local_f64(eval_state, pop_opd_f64(eval_state));
+            insert_local_f64(eval_state, pop_opd_f64(eval_state), idx);
             break;
         default:
             interpreter_exit(eval_state);
     }
 }
 
-void init_locals(eval_state_t *eval_state, vec_locals_t *locals) {
-    //insert in reverse order so we have them in the correct order within the list
-    for (int i = locals->length - 1; i >= 0; i--) {
-        init_local(eval_state, &locals->values[i]);
+void init_locals(eval_state_t *eval_state, vec_locals_t *locals, uint32_t offset) {
+    for (int i = 0; i < locals->length; i++) {
+        init_local(eval_state, &locals->values[i], offset);
+        offset += locals->values[i].n;
     }
 }
 
-static void init_local(eval_state_t *eval_state, locals_t *local) {
+static void init_local(eval_state_t *eval_state, locals_t *local, uint32_t offset) {
     for (int i = 0; i < local->n; i++) {
         switch (local->t) {
             case VALTYPE_I32:
-                insert_local_i32(eval_state, 0);
+                insert_local_i32(eval_state, 0, i + offset);
                 break;
             case VALTYPE_I64:
-                insert_local_i64(eval_state, 0);
+                insert_local_i64(eval_state, 0, i + offset);
                 break;
             case VALTYPE_F32:
-                insert_local_f32(eval_state, 0);
+                insert_local_f32(eval_state, 0, i + offset);
                 break;
             case VALTYPE_F64:
-                insert_local_f64(eval_state, 0);
+                insert_local_f64(eval_state, 0, i + offset);
                 break;
             default:
                 fprintf(stderr, "unknown valtype for local: %d\n", local->t);
@@ -169,30 +168,30 @@ void init_globals(eval_state_t *eval_state, vec_global_t *_globals) {
         return;
     }
 
-    eval_state->global_idx = 0;
+    eval_state->num_globals = _globals->length;
     eval_state->globals = malloc(_globals->length * sizeof(global_entry_t));
 
     for (int i = 0; i < _globals->length; i++) {
-        init_global(eval_state, &_globals->values[i]);
+        init_global(eval_state, &_globals->values[i], i);
     }
 }
 
-static void init_global(eval_state_t *eval_state, global_t *global) {
+static void init_global(eval_state_t *eval_state, global_t *global, globalidx idx) {
     eval_global_instrs(eval_state, global->e.instructions);
 
     //the result of the expression should be on the operand stack now, so we can consume it
     switch (global->gt.t) {
         case VALTYPE_I32:
-            insert_global_i32(eval_state, pop_opd_i32(eval_state));
+            insert_global_i32(eval_state, idx, pop_opd_i32(eval_state));
             break;
         case VALTYPE_I64:
-            insert_global_i64(eval_state, pop_opd_i64(eval_state));
+            insert_global_i64(eval_state, idx, pop_opd_i64(eval_state));
             break;
         case VALTYPE_F32:
-            insert_global_f32(eval_state, pop_opd_f32(eval_state));
+            insert_global_f32(eval_state, idx, pop_opd_f32(eval_state));
             break;
         case VALTYPE_F64:
-            insert_global_f64(eval_state, pop_opd_f64(eval_state));
+            insert_global_f64(eval_state, idx, pop_opd_f64(eval_state));
             break;
         default:
             fprintf(stderr, "unknown global valtype: %X", global->gt.t);
@@ -334,13 +333,12 @@ bool is_variable_instr(const opcode_t *opcode) {
 static valtype_t get_local_valtype(eval_state_t *eval_state, localidx idx) {
     frame_t *frame = peek_func_frame(eval_state);
 
-    if (idx >= length(&frame->locals)) {
+    if (idx >= frame->num_locals) {
         fprintf(stderr, "accessed invalid local index: %d\n", idx);
         exit(EXIT_FAILURE);
     }
 
-    local_entry_t *local = get_at(&frame->locals, idx);
-    return local->valtype;
+    return frame->locals[idx].valtype;
 }
 
 static valtype_t get_global_valtype(eval_state_t *eval_state, globalidx idx) {
@@ -394,87 +392,71 @@ frame_t *peek_func_frame(eval_state_t *eval_state) {
 
 /* Local operations start here */
 
-void insert_local_i32(eval_state_t *eval_state, i32 val) {
+static void insert_local_i32(eval_state_t *eval_state, i32 val, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t local;
-    local.val.i32 = val;
-    local.valtype = VALTYPE_I32;
-    insert_first(&current->locals, &local, sizeof(local_entry_t));
+    current->locals[idx].val.i32 = val;
+    current->locals[idx].valtype = VALTYPE_I32;
 }
 
-i32 get_local_i32(eval_state_t *eval_state, localidx idx) {
+static i32 get_local_i32(eval_state_t *eval_state, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    return local->val.i32;
+    return current->locals[idx].val.i32;
 }
 
-void set_local_i32(eval_state_t *eval_state, localidx idx, i32 val) {
+static void set_local_i32(eval_state_t *eval_state, localidx idx, i32 val) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    local->val.i32 = val;
+    current->locals[idx].val.i32 = val;
 }
 
 
-void insert_local_i64(eval_state_t *eval_state, i64 val) {
+static void insert_local_i64(eval_state_t *eval_state, i64 val, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t local;
-    local.val.i64 = val;
-    local.valtype = VALTYPE_I64;
-    insert_first(&current->locals, &local, sizeof(local_entry_t));
+    current->locals[idx].val.i64 = val;
+    current->locals[idx].valtype = VALTYPE_I64;
 }
 
-i64 get_local_i64(eval_state_t *eval_state, localidx idx) {
+static i64 get_local_i64(eval_state_t *eval_state, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    return local->val.i64;
+    return current->locals[idx].val.i64;
 }
 
-void set_local_i64(eval_state_t *eval_state, localidx idx, i64 val) {
+static void set_local_i64(eval_state_t *eval_state, localidx idx, i64 val) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    local->val.i64 = val;
+    current->locals[idx].val.i64 = val;
 }
 
 
-void insert_local_f32(eval_state_t *eval_state, f32 val) {
+static void insert_local_f32(eval_state_t *eval_state, f32 val, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t local;
-    local.val.f32 = val;
-    local.valtype = VALTYPE_F32;
-    insert_first(&current->locals, &local, sizeof(local_entry_t));
+    current->locals[idx].val.f32 = val;
+    current->locals[idx].valtype = VALTYPE_F32;
 }
 
-f32 get_local_f32(eval_state_t *eval_state, localidx idx) {
+static f32 get_local_f32(eval_state_t *eval_state, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    return local->val.f32;
+    return current->locals[idx].val.f32;
 }
 
-void set_local_f32(eval_state_t *eval_state, localidx idx, f32 val) {
+static void set_local_f32(eval_state_t *eval_state, localidx idx, f32 val) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    local->val.f32 = val;
+    current->locals[idx].val.f32 = val;
 }
 
 
-void insert_local_f64(eval_state_t *eval_state, f64 val) {
+static void insert_local_f64(eval_state_t *eval_state, f64 val, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t local;
-    local.val.f64 = val;
-    local.valtype = VALTYPE_F64;
-    insert_first(&current->locals, &local, sizeof(local_entry_t));
+    current->locals[idx].val.f64 = val;
+    current->locals[idx].valtype = VALTYPE_F64;
 }
 
-f64 get_local_f64(eval_state_t *eval_state, localidx idx) {
+static f64 get_local_f64(eval_state_t *eval_state, localidx idx) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    return local->val.f64;
+    return current->locals[idx].val.f64;
 }
 
-void set_local_f64(eval_state_t *eval_state, localidx idx, f64 val) {
+static void set_local_f64(eval_state_t *eval_state, localidx idx, f64 val) {
     frame_t *current = peek_func_frame(eval_state);
-    local_entry_t *local = get_at(&current->locals, idx);
-    local->val.f64 = val;
+    current->locals[idx].val.f64 = val;
 }
 
 /* Global operations start here */

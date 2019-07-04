@@ -12,7 +12,7 @@ void eval_variable_instr(eval_state_t *eval_state, instruction_t *instr);
 
 void init_globals(eval_state_t *eval_state, vec_global_t *_globals);
 
-void init_locals(eval_state_t *eval_state, vec_locals_t *locals);
+void init_locals(eval_state_t *eval_state, vec_locals_t *locals, uint32_t offset);
 
 void init_params(eval_state_t *eval_state, vec_valtype_t *params);
 
