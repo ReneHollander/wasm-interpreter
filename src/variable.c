@@ -169,8 +169,10 @@ void init_globals(eval_state_t *eval_state, vec_global_t *_globals) {
         return;
     }
 
-    //insert in reverse order so we have them in the correct order within the list
-    for (int i = _globals->length - 1; i >= 0; i--) {
+    eval_state->global_idx = 0;
+    eval_state->globals = malloc(_globals->length * sizeof(global_entry_t));
+
+    for (int i = 0; i < _globals->length; i++) {
         init_global(eval_state, &_globals->values[i]);
     }
 }

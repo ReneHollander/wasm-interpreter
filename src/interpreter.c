@@ -32,7 +32,6 @@ eval_state_t *create_interpreter() {
     stack_init(opd_stack, 1000);
     eval_state->opd_stack = opd_stack;
     list_init(&eval_state->frames);
-    list_init(&eval_state->globals);
     list_init(&eval_state->table);
     list_init(&eval_state->modules);
 
