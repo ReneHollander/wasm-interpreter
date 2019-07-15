@@ -34,7 +34,7 @@ add_library(interpreter
         src/table.c
         src/table.h
         src/import.c
-        src/import.h)
+        src/import.h src/vec.h)
 set_property(TARGET interpreter PROPERTY C_STANDARD 99)
 target_link_libraries(interpreter m)
 
@@ -44,3 +44,12 @@ add_executable(wasm_interpreter
 set_property(TARGET wasm_interpreter PROPERTY C_STANDARD 99)
 target_link_libraries(wasm_interpreter parser)
 target_link_libraries(wasm_interpreter interpreter)
+
+add_executable(test_vec
+        src/util.h
+        src/value.h
+        src/vec.h
+        src/vec_test.c
+        )
+set_property(TARGET test_vec PROPERTY C_STANDARD 99)
+target_link_libraries(test_vec m)
