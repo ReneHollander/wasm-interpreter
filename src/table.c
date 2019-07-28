@@ -1,6 +1,7 @@
 #include "table.h"
 #include "interpreter.h"
 #include "eval_types.h"
+#include "stack.h"
 
 void init_tables(eval_state_t *eval_state) {
     if (eval_state->module->tables == NULL || eval_state->module->elem == NULL) {

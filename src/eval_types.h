@@ -2,7 +2,6 @@
 #define WASM_INTERPRETER_EVAL_TYPES_H
 
 #include "list.h"
-#include "stack.h"
 #include "instruction.h"
 #include "module.h"
 
@@ -60,12 +59,29 @@ typedef struct table_entry {
     funcidx funcidx;
 } table_entry_t;
 
+typedef enum marker {
+    MARKER_UNKNOWN = 0,
+    MARKER_LABEL = 1,              // Marker for labels.
+    MARKER_VALUE = 2,              // Marker for values.
+    MARKER_FUNCTION = 3,           // Marker for function calls.
+} marker_t;
+
+typedef struct stack_entry {
+    val_t value;
+    valtype_t valtype;
+    marker_t marker;
+} stack_entry_t;
+
+CREATE_VEC(stack_entry_t, stack_entry)
+
+typedef vec_stack_entry_t opd_stack_t;
+
 typedef struct eval_state {
     vec_frame_t *frames;     /* Head pointer to list of stack and control frames */
     vec_global_entry_t *globals;    /* Head pointer to list of globals */
     node_t *table;      /* Head pointer to list of table entries */
     node_t *modules;    /* Head pointer to list of all parsed modules */
-    stack *opd_stack;   /* Pointer to operand stack */
+    opd_stack_t *opd_stack;   /* Pointer to operand stack */
     module_t *module;   /* Pointer to current module */
 } eval_state_t;
 

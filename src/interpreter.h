@@ -2,7 +2,6 @@
 #define WASM_INTERPRETER_INTERPRETER_H
 
 #include "module.h"
-#include "stack.h"
 #include "variable.h"
 
 eval_state_t *create_interpreter();

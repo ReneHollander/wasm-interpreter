@@ -1,9 +1,9 @@
 import glob
 import json
 import pathlib
+import struct
 import subprocess
 import sys
-import struct
 
 import math
 
@@ -111,10 +111,12 @@ def run_suite(name, test_suite, test_binaries):
             counts['skipped'] += 1
             continue
 
-        if command['type'] == 'assert_return' or command['type'] == 'assert_return_canonical_nan' or command['type'] == 'assert_return_arithmetic_nan':
+        if command['type'] == 'assert_return' or command['type'] == 'assert_return_canonical_nan' or command[
+            'type'] == 'assert_return_arithmetic_nan':
             action = command['action']
             if action['type'] == 'invoke':
-                run_cmd, result, failed = invoke_test(test_binary, test_binaries + current_module, action['field'], action['args'])
+                run_cmd, result, failed = invoke_test(test_binary, test_binaries + current_module, action['field'],
+                                                      action['args'])
 
                 if not check_result(result, command):
                     failed = True
@@ -127,14 +129,18 @@ def run_suite(name, test_suite, test_binaries):
                     prefix = PREFIX_OK
 
                 if failed or (not failed and not hide_successes):
-                    print(prefix + " " + line_str + stringify_call(action['field'], action['args']) + ": expected=" + stringify_result(command) + ", actual=" + result + ". Command: \"" + " ".join(run_cmd) + "\"")
+                    print(prefix + " " + line_str + stringify_call(action['field'],
+                                                                   action['args']) + ": expected=" + stringify_result(
+                        command) + ", actual=" + result + ". Command: \"" + " ".join(run_cmd) + "\"")
             else:
-                print(PREFIX_WARN + " " + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
+                print(PREFIX_WARN + " " + line_str + "Skipping test with action type " + action[
+                    'type'] + "(" + action.__str__() + ")" + bcolors.ENDC)
                 counts['skipped'] += 1
 
             continue
 
-        print(PREFIX_WARN + " " + line_str + "Skipping test with command type " + command['type'] + bcolors.ENDC)
+        print(PREFIX_WARN + " " + line_str + "Skipping test with command type " + command[
+            'type'] + " (" + command.__str__() + ")" + bcolors.ENDC)
         counts['skipped'] += 1
 
 

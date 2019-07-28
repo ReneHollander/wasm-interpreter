@@ -1,80 +1,187 @@
-#include<stdbool.h>
-#include "type.h"
-
 #ifndef WASM_INTERPRETER_STACK_H
 #define WASM_INTERPRETER_STACK_H
 
-typedef union value {
-    i64 i64;
-    i32 i32;
-    f32 f32;
-    f64 f64;
-} value_t;
+#include <stdbool.h>
+#include <assert.h>
 
-typedef enum marker {
-    LABEL,              //marker for labels
-    VALUE,              //marker for values
-    FUNCTION            //marker for function calls
-} marker_t;
+#include "type.h"
+#include "eval_types.h"
+#include "interpreter.h"
 
-typedef struct entry_t {
-    value_t value;
-    valtype_t valtype;  //only used for actual values
-    marker_t marker;
-} entry;
+static inline void push_i32(opd_stack_t *stack, i32 value) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .valtype = VALTYPE_I32,
+            .value = (val_t) {
+                    .i32 = value,
+            },
+            .marker = MARKER_VALUE,
+    });
+}
 
-typedef struct stack_t {
-    int top;
-    entry **entry;
-    int size;
-} stack;
+static inline void push_i64(opd_stack_t *stack, i64 value) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .valtype = VALTYPE_I64,
+            .value = (val_t) {
+                    .i64 = value,
+            },
+            .marker = MARKER_VALUE,
+    });
+}
 
-void stack_init(stack *s, uint32_t size);
+static inline void push_f32(opd_stack_t *stack, f32 value) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .valtype = VALTYPE_F32,
+            .value = (val_t) {
+                    .f32 = value,
+            },
+            .marker = MARKER_VALUE,
+    });
+}
 
-void print_stack(stack *s);
+static inline void push_f64(opd_stack_t *stack, f64 value) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .valtype = VALTYPE_F64,
+            .value = (val_t) {
+                    .f64 = value,
+            },
+            .marker = MARKER_VALUE,
+    });
+}
 
-bool stack_is_empty(stack *s);
+static inline void push_generic(opd_stack_t *stack, valtype_t valtype, val_t val) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .valtype = valtype,
+            .value = val,
+            .marker = MARKER_VALUE,
+    });
+}
 
-void push_i32(stack *s, i32 value);
+static inline i32 pop_i32(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_pop(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_I32);
+    return entry.value.i32;
+}
 
-void push_i64(stack *s, i64 value);
+static inline i64 pop_i64(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_pop(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_I64);
+    return entry.value.i64;
+}
 
-void push_f32(stack *s, f32 value);
+static inline f32 pop_f32(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_pop(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_F32);
+    return entry.value.f32;
+}
 
-void push_f64(stack *s, f64 value);
+static inline f64 pop_f64(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_pop(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_F64);
+    return entry.value.f64;
+}
 
-i32 pop_i32(stack *s);
+static inline void pop_generic(opd_stack_t *stack, valtype_t *valtype, val_t *val) {
+    stack_entry_t entry = vec_stack_entry_pop(stack);
+    assert(entry.marker == MARKER_VALUE);
+    *valtype = entry.valtype;
+    *val = entry.value;
+}
 
-i64 pop_i64(stack *s);
+static inline void pop_generic_assert_type(opd_stack_t *stack, valtype_t valtype, val_t *val) {
+    stack_entry_t entry = vec_stack_entry_pop(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == valtype);
+    *val = entry.value;
+}
 
-f32 pop_f32(stack *s);
+static inline i32 peek_i32(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_I32);
+    return entry.value.i32;
+}
 
-f64 pop_f64(stack *s);
+static inline i64 peek_i64(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_I64);
+    return entry.value.i64;
+}
 
-i32 peek_i32(stack *s);
+static inline f32 peek_f32(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_F32);
+    return entry.value.f32;
+}
 
-i64 peek_i64(stack *s);
+static inline f64 peek_f64(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == VALTYPE_F64);
+    return entry.value.f64;
+}
 
-f32 peek_f32(stack *s);
+static inline void peek_generic(opd_stack_t *stack, valtype_t *valtype, val_t *val) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    *valtype = entry.valtype;
+    *val = entry.value;
+}
 
-f64 peek_f64(stack *s);
+static inline void peek_generic_assert_type(opd_stack_t *stack, valtype_t valtype, val_t *val) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    assert(entry.valtype == valtype);
+    *val = entry.value;
+}
 
-valtype_t peek_valtype(stack *s);
+static inline valtype_t peek_valtype(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    assert(entry.marker == MARKER_VALUE);
+    return entry.valtype;
+}
 
-entry *peek(stack *s);
+static inline marker_t peek_marker(opd_stack_t *stack) {
+    stack_entry_t entry = vec_stack_entry_peek(stack);
+    return entry.marker;
+}
 
-void push_label(stack *s);
+static inline void push_marker_label(opd_stack_t *stack) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .marker = MARKER_LABEL,
+    });
+}
 
-bool pop_label(stack *s);
+static inline bool pop_marker_label(opd_stack_t *stack) {
+    return vec_stack_entry_pop(stack).marker == MARKER_LABEL;
+}
 
-void push_func_marker(stack *s);
+static inline void push_marker_func(opd_stack_t *stack) {
+    vec_stack_entry_add(stack, (stack_entry_t) {
+            .marker = MARKER_FUNCTION,
+    });
+}
 
-bool pop_func_marker(stack *s);
+static inline bool pop_marker_func(opd_stack_t *stack) {
+    return vec_stack_entry_pop(stack).marker == MARKER_FUNCTION;
+}
 
-bool pop_label_or_func_marker(stack *s);
+static inline bool pop_marker_label_or_func(opd_stack_t *stack) {
+    marker_t marker = vec_stack_entry_pop(stack).marker;
+    return marker == MARKER_FUNCTION || marker == MARKER_LABEL;
+}
 
-void drop(stack *s);
+static inline stack_entry_t *peek(opd_stack_t *stack) {
+    return vec_stack_entry_peekp_or(stack, NULL);
+}
 
-void destroy(stack *s);
+static inline void drop(opd_stack_t *stack) {
+    vec_stack_entry_pop(stack);
+}
 
 #endif //WASM_INTERPRETER_STACK_H

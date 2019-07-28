@@ -18,7 +18,6 @@ set_property(TARGET parser PROPERTY C_STANDARD 99)
 add_library(interpreter
         src/interpreter.c
         src/interpreter.h
-        src/stack.c
         src/stack.h
         src/numeric.c
         src/numeric.h
@@ -30,13 +29,13 @@ add_library(interpreter
         src/variable.h
         src/control.c
         src/control.h
-        src/opd_stack.c
-        src/opd_stack.h
         src/eval_types.h
         src/table.c
         src/table.h
         src/import.c
-        src/import.h src/vec.h)
+        src/import.h
+        src/vec.h
+        )
 set_property(TARGET interpreter PROPERTY C_STANDARD 99)
 target_link_libraries(interpreter m)
 

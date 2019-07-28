@@ -1,6 +1,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
+
 #include "interpreter.h"
 #include "instruction.h"
 #include "stack.h"
@@ -9,7 +10,6 @@
 #include "memory.h"
 #include "variable.h"
 #include "control.h"
-#include "opd_stack.h"
 #include "strings.h"
 #include "eval_types.h"
 #include "table.h"
@@ -28,9 +28,7 @@ static instruction_t *fetch_next_instr(eval_state_t *eval_state);
 eval_state_t *create_interpreter() {
     eval_state_t *eval_state = calloc(sizeof(eval_state_t), 1);
 
-    stack *opd_stack = malloc(sizeof(stack));
-    stack_init(opd_stack, 1000);
-    eval_state->opd_stack = opd_stack;
+    eval_state->opd_stack = vec_stack_entry_create();
     eval_state->frames = vec_frame_create();
     list_init(&eval_state->table);
     list_init(&eval_state->modules);
@@ -47,7 +45,7 @@ return_value_t interpret_function(eval_state_t *eval_state, char *func_name, nod
     func_t *func = find_exported_func(eval_state, eval_state->module, func_name);
     for (int i = 0; i < length(&args); i++) {
         parameter_value_t *param = get_at(&args, i);
-        push_generic(eval_state, param->type, &param->val);
+        push_generic(eval_state->opd_stack, param->type, param->val);
     }
 
     eval_call(eval_state, func);
@@ -57,14 +55,13 @@ return_value_t interpret_function(eval_state_t *eval_state, char *func_name, nod
     vec_valtype_t *fun_output = vec_functype_get(eval_state->module->types, func->type).t2;
     if (vec_valtype_length(fun_output) == 1) {
         return_value.type = vec_valtype_get(fun_output, 0);
-        pop_generic(eval_state, vec_valtype_get(fun_output, 0), &return_value.val);
+        pop_generic_assert_type(eval_state->opd_stack, vec_valtype_get(fun_output, 0), &return_value.val);
     } else if (vec_valtype_length(fun_output) > 1) {
         interpreter_error(eval_state, "more than one result is not supported currently\n");
     }
 
     //if the operand stack is not empty, something went wrong
-    if (!stack_is_empty(eval_state->opd_stack)) {
-        print_stack(eval_state->opd_stack);
+    if (!vec_stack_entry_empty(eval_state->opd_stack)) {
         interpreter_error(eval_state, "operand stack is not empty");
     }
 
@@ -97,13 +94,7 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
     }
 
     //the result of the expression should be on the operand stack now, so we can consume it
-    valtype_t result_type;
-    val_t val;
-    pop_unknown(eval_state, &result_type, &val);
-    if (result_type != VALTYPE_I32) {
-        interpreter_error(eval_state, "data expression does not evaluate to i32");
-    }
-    i32 offset = val.i32;
+    i32 offset = pop_i32(eval_state->opd_stack);
 
     if (memory->size * PAGE_SIZE < offset + vec_byte_length(data.init)) {
         interpreter_error(eval_state, "data section does not fit into memory");
@@ -224,17 +215,17 @@ static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr
 }
 
 static void eval_select(eval_state_t *eval_state) {
-    i32 c = pop_opd_i32(eval_state);
+    i32 c = pop_i32(eval_state->opd_stack);
     valtype_t valtype = peek_valtype(eval_state->opd_stack);
     val_t val1;
     val_t val2;
-    pop_generic(eval_state, valtype, &val2);
-    pop_generic(eval_state, valtype, &val1);
+    pop_generic_assert_type(eval_state->opd_stack, valtype, &val2);
+    pop_generic_assert_type(eval_state->opd_stack, valtype, &val1);
 
     if (c != 0) {
-        push_generic(eval_state, valtype, &val1);
+        push_generic(eval_state->opd_stack, valtype, val1);
     } else {
-        push_generic(eval_state, valtype, &val2);
+        push_generic(eval_state->opd_stack, valtype, val2);
     }
 }
 

@@ -1,13 +1,9 @@
-/*
- * Contains everything related to
- * memory instructions
- */
-
 #include <stdlib.h>
+
 #include "memory.h"
 #include "interpreter.h"
-#include "opd_stack.h"
 #include "util.h"
+#include "stack.h"
 
 static memory_t *memory = NULL;
 
@@ -81,7 +77,7 @@ bool is_memory_instr(const opcode_t *opcode) {
 }
 
 i32 calculate_address(eval_state_t *eval_state, instruction_t instr, i32 bit_width) {
-    i32 a = pop_opd_i32(eval_state);
+    i32 a = pop_i32(eval_state->opd_stack);
     i32 ea = a + instr.memarg.offset;
     if ((ea + bit_width / 8) > (memory->size * PAGE_SIZE)) {
         interpreter_error(eval_state, "memory access is out of bounds\n");
@@ -97,21 +93,21 @@ void eval_memory_instr(eval_state_t *eval_state, instruction_t instr) {
 #define LOAD_INSN(eval_state, srctype, targettype) \
     i32 ea = calculate_address(eval_state, instr, sizeof(srctype) * 8); \
     srctype value = *((srctype *) (memory->data + ea)); \
-    CAT(push_opd_, targettype)(eval_state,(targettype) value)
+    CAT(push_, targettype)(eval_state->opd_stack, (targettype) value)
 
 #define FLOAT_LOAD_INSN(eval_state, type) \
     i32 ea = calculate_address(eval_state, instr, sizeof(type) * 8); \
     type value = *((type *) (memory->data + ea)); \
-    CAT(push_opd_, type)(eval_state,value)
+    CAT(push_, type)(eval_state->opd_stack, value)
 
 #define STORE_INSN(eval_state, srctype, intermediatetype, targettype) \
-    srctype value = CAT(pop_opd_, srctype)(eval_state); \
+    srctype value = CAT(pop_, srctype)(eval_state->opd_stack); \
     intermediatetype v = (intermediatetype) value; \
     i32 ea = calculate_address(eval_state, instr, sizeof(targettype) * 8); \
     *((targettype *) (memory->data + ea)) = (targettype) (v & BIT_MASK(intermediatetype, sizeof(targettype) * 8))
 
 #define FLOAT_STORE_INSN(eval_state, type) \
-    type value = CAT(pop_opd_, type)(eval_state); \
+    type value = CAT(pop_, type)(eval_state->opd_stack); \
     i32 ea = calculate_address(eval_state, instr, sizeof(type) * 8); \
     *((type *) (memory->data + ea)) = value
 
@@ -163,7 +159,7 @@ void eval_memory_instr(eval_state_t *eval_state, instruction_t instr) {
     } else if (opcode == OP_I64_STORE32) {
         STORE_INSN(eval_state, i64, u64, u32);
     } else if (opcode == OP_MEMORY_SIZE) {
-        push_opd_i32(eval_state, memory->size);
+        push_i32(eval_state->opd_stack, memory->size);
     } else if (opcode == OP_MEMORY_GROW) {
         interpreter_error(eval_state, "memory opcode not implemented\n");
     } else {

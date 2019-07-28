@@ -1,14 +1,10 @@
-/*
- * Contains everything related to
- * control instructions
- */
+#include <stdio.h>
 
-#include "stdio.h"
 #include "control.h"
 #include "variable.h"
 #include "stack.h"
 #include "interpreter.h"
-#include "opd_stack.h"
+#include "stack.h"
 
 static void eval_return(eval_state_t *eval_state);
 
@@ -73,15 +69,11 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
     vec_valtype_iterator_t param_it = vec_valtype_iterator(ft->t1, IT_BACKWARDS);
     while (vec_valtype_has_next(&param_it)) {
         valtype_t type = vec_valtype_next(&param_it);
-        valtype_t onstack;
         val_t val;
-        pop_unknown(eval_state, &onstack, &val);
-        if (onstack != type) {
-            interpreter_error(eval_state, "value on stack and parameter type don't match");
-        }
+        pop_generic_assert_type(eval_state->opd_stack, type, &val);
         vec_local_entry_set(current->locals, vec_valtype_get_iterator_index(&param_it), (local_entry_t) {
                 .val = val,
-                .valtype = onstack,
+                .valtype = type,
         });
     }
     vec_locals_iterator_t locals_it = vec_locals_iterator(func->locals, IT_FORWARDS);
@@ -95,7 +87,7 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
         }
     }
 
-    push_func_marker(eval_state->opd_stack);
+    push_marker_func(eval_state->opd_stack);
 }
 
 static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
@@ -123,7 +115,7 @@ static void eval_return(eval_state_t *eval_state) {
 }
 
 static void eval_br_if(eval_state_t *eval_state, instruction_t *instr) {
-    i32 val = pop_opd_i32(eval_state);
+    i32 val = pop_i32(eval_state->opd_stack);
 
     if (val != 0) {
         eval_br(eval_state, instr);
@@ -131,7 +123,7 @@ static void eval_br_if(eval_state_t *eval_state, instruction_t *instr) {
 }
 
 static void eval_br_table(eval_state_t *eval_state, instruction_t *instr) {
-    i32 index = pop_opd_i32(eval_state);
+    i32 index = pop_i32(eval_state->opd_stack);
     vec_labelidx_t *labels = instr->table.labels;
 
     if (index < vec_labelidx_length(labels)) {
@@ -145,7 +137,7 @@ static void eval_br_table(eval_state_t *eval_state, instruction_t *instr) {
 
 static void eval_block(eval_state_t *eval_state, instruction_t *instr) {
     u32 arity = instr->block.resulttype.empty ? 0 : 1;
-    push_label(eval_state->opd_stack);
+    push_marker_label(eval_state->opd_stack);
     vec_frame_push(eval_state->frames, (frame_t) {
             .instrs = instr->block.instructions,
             .arity = arity,
@@ -156,7 +148,7 @@ static void eval_block(eval_state_t *eval_state, instruction_t *instr) {
 
 static void eval_loop(eval_state_t *eval_state, instruction_t *instr) {
     u32 arity = instr->block.resulttype.empty ? 0 : 1;
-    push_label(eval_state->opd_stack);
+    push_marker_label(eval_state->opd_stack);
     vec_frame_push(eval_state->frames, (frame_t) {
             .instrs = instr->block.instructions,
             .arity = arity,
@@ -167,8 +159,8 @@ static void eval_loop(eval_state_t *eval_state, instruction_t *instr) {
 
 static void eval_if(eval_state_t *eval_state, instruction_t *instr) {
     u32 arity = instr->if_block.resulttype.empty ? 0 : 1;
-    i32 val = pop_opd_i32(eval_state);
-    push_label(eval_state->opd_stack);
+    i32 val = pop_i32(eval_state->opd_stack);
+    push_marker_label(eval_state->opd_stack);
 
     if (val != 0) {
         vec_frame_push(eval_state->frames, (frame_t) {
@@ -195,18 +187,18 @@ static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
     valtype_t result_type = frame->result_type;
 
     if (has_result) {
-        pop_generic(eval_state, frame->result_type, &val);
+        pop_generic_assert_type(eval_state->opd_stack, frame->result_type, &val);
     }
 
     for (int32_t lbl_idx = labelidx; lbl_idx >= 0; lbl_idx--) {
-        while (!pop_label_or_func_marker(eval_state->opd_stack));
+        while (!pop_marker_label_or_func(eval_state->opd_stack));
         frame_t *current = vec_frame_peekp(eval_state->frames);
 
         /* if we are in a loop and this is the outer level (lbl_idx = 0),
            we want to jump back to the start (ip=0) and push the label again for
             the next iteration, but we do not want to remove the frame */
         if (lbl_idx == 0 && current->context == LOOP_CONTEXT) {
-            push_label(eval_state->opd_stack);
+            push_marker_label(eval_state->opd_stack);
             current->ip = 0;
         } else {
             vec_frame_pop(eval_state->frames);
@@ -214,7 +206,7 @@ static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
     }
 
     if (has_result) {
-        push_generic(eval_state, result_type, &val);
+        push_generic(eval_state->opd_stack, result_type, val);
     }
 }
 
@@ -243,28 +235,28 @@ void clean_to_func_marker(eval_state_t *eval_state) {
     val_t val;
 
     if (has_result) {
-        pop_generic(eval_state, frame->result_type, &val);
+        pop_generic_assert_type(eval_state->opd_stack, frame->result_type, &val);
     }
 
-    while (!pop_func_marker(eval_state->opd_stack));
+    while (!pop_marker_func(eval_state->opd_stack));
 
     if (has_result) {
-        push_generic(eval_state, frame->result_type, &val);
+        push_generic(eval_state->opd_stack, frame->result_type, val);
     }
 }
 
 void clean_to_label(eval_state_t *eval_state) {
     frame_t *frame = vec_frame_peekp(eval_state->frames);
     bool has_result = frame->arity > 0 ? true : false;
-    val_t val;
+    val_t val = {0};
 
     if (has_result) {
-        pop_generic(eval_state, frame->result_type, &val);
+        pop_generic_assert_type(eval_state->opd_stack, frame->result_type, &val);
     }
 
-    while (!pop_label(eval_state->opd_stack));
+    while (!pop_marker_label(eval_state->opd_stack));
 
     if (has_result) {
-        push_generic(eval_state, frame->result_type, &val);
+        push_generic(eval_state->opd_stack, frame->result_type, val);
     }
 }
