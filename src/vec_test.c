@@ -101,5 +101,21 @@ int main() {
     assert(vec_u32_has_next(&it) == false);
     check(vec, "[15, 64, 764]");
 
+    vec_u32_insert(vec, 1, 8);
+    check(vec, "[15, 8, 64, 764]");
+    assert(vec_u32_length(vec) == 4);
+
+    vec_u32_insert(vec, 0, 457);
+    check(vec, "[457, 15, 8, 64, 764]");
+    assert(vec_u32_length(vec) == 5);
+
+    vec_u32_insert(vec, 4, 5);
+    check(vec, "[457, 15, 8, 64, 5, 764]");
+    assert(vec_u32_length(vec) == 6);
+
+    vec_u32_insert(vec, 8, 542);
+    check(vec, "[457, 15, 8, 64, 5, 764, 0, 0, 542]");
+    assert(vec_u32_length(vec) == 9);
+
     vec_u32_free(vec);
 }

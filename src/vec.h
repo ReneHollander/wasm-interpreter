@@ -102,8 +102,17 @@ static inline type CAT(fn_prefix, _peek)(const vec_type* vec) { \
 }\
 static inline void CAT(fn_prefix, _set)(vec_type* vec, u32 idx, type element) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0) VEC_ERROR("index %d is not be bigger than 0", idx); \
+    if (idx < 0) VEC_ERROR("index %d is not positive", idx); \
     CAT(fn_prefix, _resize)(vec, fmax(vec->_length, idx + 1)); \
+    vec->_elements[idx] = element; \
+}\
+static inline void CAT(fn_prefix, _insert)(vec_type* vec, u32 idx, type element) { \
+    if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
+    if (idx < 0) VEC_ERROR("index %d is not positive", idx); \
+    CAT(fn_prefix, _resize)(vec, fmax(vec->_length + 1, idx + 1)); \
+    for (u32 i = vec->_length - 1; i > idx; i--) { \
+        vec->_elements[i] = vec->_elements[i - 1]; \
+    }\
     vec->_elements[idx] = element; \
 }\
 static inline type CAT(fn_prefix, _remove)(vec_type* vec, u32 idx) { \
