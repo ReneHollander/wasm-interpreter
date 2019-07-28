@@ -16,19 +16,6 @@ void init_locals(eval_state_t *eval_state, vec_locals_t *locals, uint32_t offset
 
 void init_params(eval_state_t *eval_state, vec_valtype_t *params);
 
-/* frame operations */
-
-frame_t *peek_frame_at(eval_state_t *eval_state, int idx);
-
-void push_frame(eval_state_t *eval_state, vec_instruction_t *instrs,
-                uint32_t arity, valtype_t result_type, context_t context);
-
-void pop_frame(eval_state_t *eval_state);
-
-frame_t *peek_frame(eval_state_t *eval_state);
-
-frame_t *peek_func_frame(eval_state_t *eval_state);
-
 /* **************** */
 
 #endif //WASM_INTERPRETER_VARIABLE_H

@@ -6,15 +6,6 @@
 #include "instruction.h"
 #include "module.h"
 
-typedef struct eval_state {
-    node_t *frames;     /* Head pointer to list of stack and control frames */
-    node_t *globals;    /* Head pointer to list of globals */
-    node_t *table;      /* Head pointer to list of table entries */
-    node_t *modules;    /* Head pointer to list of all parsed modules */
-    stack *opd_stack;   /* Pointer to operand stack */
-    module_t *module;   /* Pointer to current module */
-} eval_state_t;
-
 typedef union val {
     i32 i32;
     i64 i64;
@@ -59,9 +50,31 @@ typedef struct frame {
     local_entry_t *locals;          /* Array of parameters followed by local variables */
 } frame_t;
 
+CREATE_VEC(frame_t, frame)
+
 typedef struct table_entry {
     bool initialized;
     funcidx funcidx;
 } table_entry_t;
+
+typedef struct eval_state {
+    vec_frame_t *frames;     /* Head pointer to list of stack and control frames */
+    node_t *globals;    /* Head pointer to list of globals */
+    node_t *table;      /* Head pointer to list of table entries */
+    node_t *modules;    /* Head pointer to list of all parsed modules */
+    stack *opd_stack;   /* Pointer to operand stack */
+    module_t *module;   /* Pointer to current module */
+} eval_state_t;
+
+static inline frame_t *peek_func_frame(vec_frame_t *vec) {
+    vec_frame_iterator_t it = vec_frame_iterator(vec, IT_BACKWARDS);
+    while (vec_frame_has_next(&it)) {
+        frame_t *frame = vec_frame_nextp(&it);
+        if (frame->context == FUNCTION_CONTEXT) {
+            return frame;
+        }
+    }
+    return NULL;
+}
 
 #endif //WASM_INTERPRETER_EVAL_TYPES_H

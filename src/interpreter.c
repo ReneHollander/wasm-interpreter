@@ -31,7 +31,7 @@ eval_state_t *create_interpreter() {
     stack *opd_stack = malloc(sizeof(stack));
     stack_init(opd_stack, 1000);
     eval_state->opd_stack = opd_stack;
-    list_init(&eval_state->frames);
+    eval_state->frames = vec_frame_create();
     list_init(&eval_state->table);
     list_init(&eval_state->modules);
 
@@ -163,7 +163,7 @@ void eval_instrs(eval_state_t *eval_state) {
 }
 
 static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
-    for (frame_t *frame; (frame = peek_frame(eval_state)) != NULL;) {
+    for (frame_t *frame; (frame = vec_frame_peekp_or(eval_state->frames, NULL)) != NULL;) {
         //if the ip is past the last instruction - clean all but the result argument and pop the frame
         if (frame->ip >= vec_instruction_length(frame->instrs)) {
             if (frame->context == FUNCTION_CONTEXT) {
@@ -171,7 +171,7 @@ static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
             } else if (frame->context == CONTROL_CONTEXT || frame->context == LOOP_CONTEXT) {
                 clean_to_label(eval_state);
             }
-            pop_frame(eval_state);
+            vec_frame_pop(eval_state->frames);
             continue;
         }
 

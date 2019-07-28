@@ -60,9 +60,13 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
 
 void eval_call(eval_state_t *eval_state, func_t *func) {
     functype_t *ft = vec_functype_getp(eval_state->module->types, func->type);
-    push_frame(eval_state, func->expression.instructions, vec_valtype_length(ft->t2), vec_valtype_get_or(ft->t2, 0, 0),
-               FUNCTION_CONTEXT);
-    frame_t *current = peek_frame(eval_state);
+
+    frame_t *current = vec_frame_push(eval_state->frames, (frame_t) {
+            .instrs = func->expression.instructions,
+            .arity = vec_valtype_length(ft->t2),
+            .context = FUNCTION_CONTEXT,
+            .result_type = vec_valtype_get_or(ft->t2, 0, 0),
+    });
 
     u32 num_params = vec_valtype_length(ft->t1);
     u32 num_locals = 0;
@@ -96,9 +100,9 @@ static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
 static void eval_return(eval_state_t *eval_state) {
     clean_to_func_marker(eval_state);
 
-    for (frame_t *frame; (frame = peek_frame(eval_state)) != NULL;) {
-        context_t context = frame->context;
-        pop_frame(eval_state);
+    while (!vec_frame_empty(eval_state->frames)) {
+        frame_t frame = vec_frame_pop(eval_state->frames);
+        context_t context = frame.context;
         if (context == FUNCTION_CONTEXT) {
             break;
         }
@@ -129,13 +133,23 @@ static void eval_br_table(eval_state_t *eval_state, instruction_t *instr) {
 static void eval_block(eval_state_t *eval_state, instruction_t *instr) {
     u32 arity = instr->block.resulttype.empty ? 0 : 1;
     push_label(eval_state->opd_stack);
-    push_frame(eval_state, instr->block.instructions, arity, instr->block.resulttype.type, CONTROL_CONTEXT);
+    vec_frame_push(eval_state->frames, (frame_t) {
+            .instrs = instr->block.instructions,
+            .arity = arity,
+            .context = CONTROL_CONTEXT,
+            .result_type = instr->block.resulttype.type,
+    });
 }
 
 static void eval_loop(eval_state_t *eval_state, instruction_t *instr) {
     u32 arity = instr->block.resulttype.empty ? 0 : 1;
     push_label(eval_state->opd_stack);
-    push_frame(eval_state, instr->block.instructions, arity, instr->block.resulttype.type, LOOP_CONTEXT);
+    vec_frame_push(eval_state->frames, (frame_t) {
+            .instrs = instr->block.instructions,
+            .arity = arity,
+            .context = LOOP_CONTEXT,
+            .result_type = instr->block.resulttype.type,
+    });
 }
 
 static void eval_if(eval_state_t *eval_state, instruction_t *instr) {
@@ -144,15 +158,25 @@ static void eval_if(eval_state_t *eval_state, instruction_t *instr) {
     push_label(eval_state->opd_stack);
 
     if (val != 0) {
-        push_frame(eval_state, instr->if_block.ifpath, arity, instr->if_block.resulttype.type, CONTROL_CONTEXT);
+        vec_frame_push(eval_state->frames, (frame_t) {
+                .instrs = instr->if_block.ifpath,
+                .arity = arity,
+                .context = CONTROL_CONTEXT,
+                .result_type = instr->if_block.resulttype.type,
+        });
     } else if (instr->if_block.elsepath != NULL) {
-        push_frame(eval_state, instr->if_block.elsepath, arity, instr->if_block.resulttype.type, CONTROL_CONTEXT);
+        vec_frame_push(eval_state->frames, (frame_t) {
+                .instrs = instr->if_block.elsepath,
+                .arity = arity,
+                .context = CONTROL_CONTEXT,
+                .result_type = instr->if_block.resulttype.type,
+        });
     }
 }
 
 static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
     labelidx labelidx = instr->labelidx;
-    frame_t *frame = peek_frame_at(eval_state, labelidx);
+    frame_t *frame = vec_frame_getp(eval_state->frames, vec_frame_length(eval_state->frames) - labelidx - 1);
     bool has_result = frame->arity > 0 ? true : false;
     val_t val;
     valtype_t result_type = frame->result_type;
@@ -163,7 +187,7 @@ static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
 
     for (int32_t lbl_idx = labelidx; lbl_idx >= 0; lbl_idx--) {
         while (!pop_label_or_func_marker(eval_state->opd_stack));
-        frame_t *current = peek_frame(eval_state);
+        frame_t *current = vec_frame_peekp(eval_state->frames);
 
         /* if we are in a loop and this is the outer level (lbl_idx = 0),
            we want to jump back to the start (ip=0) and push the label again for
@@ -172,7 +196,7 @@ static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
             push_label(eval_state->opd_stack);
             current->ip = 0;
         } else {
-            pop_frame(eval_state);
+            vec_frame_pop(eval_state->frames);
         }
     }
 
@@ -201,7 +225,7 @@ bool is_control_instr(const opcode_t *opcode) {
 }
 
 void clean_to_func_marker(eval_state_t *eval_state) {
-    frame_t *frame = peek_func_frame(eval_state);
+    frame_t *frame = peek_func_frame(eval_state->frames);
     bool has_result = frame->arity > 0 ? true : false;
     val_t val;
 
@@ -217,7 +241,7 @@ void clean_to_func_marker(eval_state_t *eval_state) {
 }
 
 void clean_to_label(eval_state_t *eval_state) {
-    frame_t *frame = peek_frame(eval_state);
+    frame_t *frame = vec_frame_peekp(eval_state->frames);
     bool has_result = frame->arity > 0 ? true : false;
     val_t val;
 

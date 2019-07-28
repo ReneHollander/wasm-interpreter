@@ -91,14 +91,24 @@ int main() {
     assert(vec_u32_length(vec) == 3);
     check(vec, "[15, 64, 764]");
 
-    vec_u32_iterator_t it = vec_u32_iterator(vec);
-    assert(vec_u32_has_next(&it) == true);
-    assert(vec_u32_next(&it) == 15);
-    assert(vec_u32_has_next(&it) == true);
-    assert(vec_u32_next(&it) == 64);
-    assert(vec_u32_has_next(&it) == true);
-    assert(vec_u32_next(&it) == 764);
-    assert(vec_u32_has_next(&it) == false);
+    vec_u32_iterator_t it1 = vec_u32_iterator(vec, IT_FORWARDS);
+    assert(vec_u32_has_next(&it1) == true);
+    assert(vec_u32_next(&it1) == 15);
+    assert(vec_u32_has_next(&it1) == true);
+    assert(vec_u32_next(&it1) == 64);
+    assert(vec_u32_has_next(&it1) == true);
+    assert(vec_u32_next(&it1) == 764);
+    assert(vec_u32_has_next(&it1) == false);
+    check(vec, "[15, 64, 764]");
+
+    vec_u32_iterator_t it2 = vec_u32_iterator(vec, IT_BACKWARDS);
+    assert(vec_u32_has_next(&it2) == true);
+    assert(vec_u32_next(&it2) == 764);
+    assert(vec_u32_has_next(&it2) == true);
+    assert(vec_u32_next(&it2) == 64);
+    assert(vec_u32_has_next(&it2) == true);
+    assert(vec_u32_next(&it2) == 15);
+    assert(vec_u32_has_next(&it2) == false);
     check(vec, "[15, 64, 764]");
 
     vec_u32_insert(vec, 1, 8);

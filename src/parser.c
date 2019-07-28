@@ -752,7 +752,7 @@ static void handle_imports(module_t *module, parse_error_f parse_error) {
         uint32_t func_count = 0;
         uint32_t global_count = 0;
 
-        vec_import_iterator_t it = vec_import_iterator(module->imports);
+        vec_import_iterator_t it = vec_import_iterator(module->imports, IT_FORWARDS);
         while (vec_import_has_next(&it)) {
             import_t *import = vec_import_nextp(&it);
             if (import->desc == IMPORTDESC_FUNC) {
