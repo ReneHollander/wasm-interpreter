@@ -33,6 +33,8 @@ typedef struct local_entry {
     valtype_t valtype;
 } local_entry_t;
 
+CREATE_VEC(local_entry_t, local_entry)
+
 typedef enum context {
     FUNCTION_CONTEXT,
     CONTROL_CONTEXT,
@@ -46,8 +48,7 @@ typedef struct frame {
     context_t context;              /* Indicates whether this is a stack frame used for function calls,
                                         or a control frame used for control operations, or a loop frame */
     valtype_t result_type;          /* Type of result (if any) */
-    localidx num_locals;             /* Number of local variables + parameters */
-    local_entry_t *locals;          /* Array of parameters followed by local variables */
+    vec_local_entry_t *locals;          /* Array of parameters followed by local variables */
 } frame_t;
 
 CREATE_VEC(frame_t, frame)

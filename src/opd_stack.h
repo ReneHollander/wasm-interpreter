@@ -5,6 +5,10 @@
 #include "stack.h"
 #include "variable.h"
 
+void peek_unknown(eval_state_t *eval_state, valtype_t *result_type, val_t *val);
+
+void peek_generic(eval_state_t *eval_state, valtype_t result_type, val_t *val);
+
 void pop_unknown(eval_state_t *eval_state, valtype_t *result_type, val_t *val);
 
 void pop_generic(eval_state_t *eval_state, valtype_t result_type, val_t *val);

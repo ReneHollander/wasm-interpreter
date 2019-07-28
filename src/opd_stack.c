@@ -6,6 +6,31 @@
 
 /* Some convenience functions defining operand stack operations */
 
+void peek_unknown(eval_state_t *eval_state, valtype_t *result_type, val_t *val) {
+    *result_type = peek_valtype(eval_state->opd_stack);
+    peek_generic(eval_state, *result_type, val);
+}
+
+void peek_generic(eval_state_t *eval_state, valtype_t result_type, val_t *val) {
+    switch (result_type) {
+        case VALTYPE_I32:
+            val->i32 = peek_opd_i32(eval_state);
+            break;
+        case VALTYPE_F64:
+            val->f64 = peek_opd_f64(eval_state);
+            break;
+        case VALTYPE_I64:
+            val->i64 = peek_opd_i64(eval_state);
+            break;
+        case VALTYPE_F32:
+            val->f32 = peek_opd_f32(eval_state);
+            break;
+        default:
+            fprintf(stderr, "unknown return valtype");
+            interpreter_exit(eval_state);
+    }
+}
+
 void pop_unknown(eval_state_t *eval_state, valtype_t *result_type, val_t *val) {
     *result_type = peek_valtype(eval_state->opd_stack);
     pop_generic(eval_state, *result_type, val);

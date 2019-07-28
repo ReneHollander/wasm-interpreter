@@ -75,13 +75,34 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
         num_locals += vec_locals_get(func->locals, i).n;
     }
 
-    uint32_t num_total = num_locals + num_params;
-    //size to be allocated = (number of local variables + number of parameters) * (number of elements)
-    current->locals = malloc(num_total * sizeof(local_entry_t));
-    current->num_locals = num_total;
+    current->locals = vec_local_entry_create();
 
-    init_params(eval_state, ft->t1);
-    init_locals(eval_state, func->locals, num_params);
+    // Prepare locals
+    vec_valtype_iterator_t param_it = vec_valtype_iterator(ft->t1, IT_BACKWARDS);
+    while (vec_valtype_has_next(&param_it)) {
+        valtype_t type = vec_valtype_next(&param_it);
+        valtype_t onstack;
+        val_t val;
+        pop_unknown(eval_state, &onstack, &val);
+        if (onstack != type) {
+            interpreter_error(eval_state, "value on stack and parameter type don't match");
+        }
+        vec_local_entry_set(current->locals, vec_valtype_get_iterator_index(&param_it), (local_entry_t) {
+                .val = val,
+                .valtype = onstack,
+        });
+    }
+    vec_locals_iterator_t locals_it = vec_locals_iterator(func->locals, IT_FORWARDS);
+    while (vec_locals_has_next(&locals_it)) {
+        locals_t locals = vec_locals_next(&locals_it);
+        for (int i = 0; i < locals.n; i++) {
+            vec_local_entry_add(current->locals, (local_entry_t) {
+                    .val = {0},
+                    .valtype = locals.t,
+            });
+        }
+    }
+
     push_func_marker(eval_state->opd_stack);
 }
 
