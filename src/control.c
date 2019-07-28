@@ -26,7 +26,6 @@ static void eval_br_table(eval_state_t *eval_state, instruction_t *instr);
 
 static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr);
 
-
 void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
     opcode_t opcode = instr->opcode;
 
@@ -65,15 +64,8 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
             .instrs = func->expression.instructions,
             .arity = vec_valtype_length(ft->t2),
             .context = FUNCTION_CONTEXT,
-            .result_type = vec_valtype_get_or(ft->t2, 0, 0),
+            .result_type = vec_valtype_get_or(ft->t2, 0, VALTYPE_UNKNOWN),
     });
-
-    u32 num_params = vec_valtype_length(ft->t1);
-    u32 num_locals = 0;
-
-    for (int i = 0; i < vec_locals_length(func->locals); i++) {
-        num_locals += vec_locals_get(func->locals, i).n;
-    }
 
     current->locals = vec_local_entry_create();
 

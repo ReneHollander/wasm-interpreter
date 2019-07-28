@@ -659,7 +659,7 @@ static inline locals_t next_locals(parser_state_t *state) {
     return locals;
 }
 
-MAKE_NEXT_VEC(locals, next_locals);
+MAKE_NEXT_VEC(locals, next_locals)
 
 static inline func_t next_func(parser_state_t *state) {
     func_t func;
