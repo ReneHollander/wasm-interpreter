@@ -5,11 +5,11 @@
 #include "eval_types.h"
 
 func_t *find_exported_func(eval_state_t *eval_state, module_t *module, char *func_name) {
-    for (int i = 0; i < module->exports->length; i++) {
-        if (strcmp(func_name, module->exports->values[i].name) == 0
-            && module->exports->values[i].desc == EXPORTDESC_FUNC) {
-            funcidx idx = module->exports->values[i].func;
-            return &eval_state->module->funcs->values[idx];
+    for (int i = 0; i < vec_export_length(module->exports); i++) {
+        export_t *export = vec_export_getp(module->exports, i);
+        if (strcmp(func_name, export->name) == 0 && export->desc == EXPORTDESC_FUNC) {
+            funcidx idx = export->func;
+            return vec_func_getp(eval_state->module->funcs, idx);
         }
     }
 
@@ -18,11 +18,11 @@ func_t *find_exported_func(eval_state_t *eval_state, module_t *module, char *fun
 }
 
 global_t *find_exported_global(eval_state_t *eval_state, module_t *module, char *global_name) {
-    for (int i = 0; i < module->exports->length; i++) {
-        if (strcmp(global_name, module->exports->values[i].name) == 0
-            && module->exports->values[i].desc == EXPORTDESC_GLOBAL) {
-            globalidx idx = module->exports->values[i].global;
-            return &eval_state->module->globals->values[idx];
+    for (int i = 0; i < vec_export_length(module->exports); i++) {
+        export_t *export = vec_export_getp(module->exports, i);
+        if (strcmp(global_name, export->name) == 0 && export->desc == EXPORTDESC_GLOBAL) {
+            globalidx idx = export->global;
+            return vec_global_getp(eval_state->module->globals, idx);
         }
     }
 
@@ -72,20 +72,21 @@ void init_imports(eval_state_t *eval_state, vec_import_t *imports) {
     uint32_t func_idx = 0;
     uint32_t global_idx = 0;
 
-    for (int i = 0; i < imports->length; i++) {
-        import_t import = imports->values[i];
-
-        if (import.desc == IMPORTDESC_FUNC) {
-            eval_state->module->funcs->values[func_idx++] = *find_func_global(eval_state, import.module, import.name);
-        } else if (import.desc == IMPORTDESC_GLOBAL) {
-            eval_state->module->globals->values[global_idx++] = *find_global_global(eval_state, import.module,
-                                                                                  import.name);
-        } else if (import.desc == IMPORTDESC_TABLE) {
-            //do nothing for now
-        } else if (import.desc == IMPORTDESC_MEM) {
-            //do nothing for now
-        } else {
-            interpreter_error(eval_state, "unknown import desc");
-        }
-    }
+    // TODO: fix
+//    for (int i = 0; i < imports->length; i++) {
+//        import_t import = imports->values[i];
+//
+//        if (import.desc == IMPORTDESC_FUNC) {
+//            eval_state->module->funcs->values[func_idx++] = *find_func_global(eval_state, import.module, import.name);
+//        } else if (import.desc == IMPORTDESC_GLOBAL) {
+//            eval_state->module->globals->values[global_idx++] = *find_global_global(eval_state, import.module,
+//                                                                                    import.name);
+//        } else if (import.desc == IMPORTDESC_TABLE) {
+//            //do nothing for now
+//        } else if (import.desc == IMPORTDESC_MEM) {
+//            //do nothing for now
+//        } else {
+//            interpreter_error(eval_state, "unknown import desc");
+//        }
+//    }
 }

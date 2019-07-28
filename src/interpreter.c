@@ -43,7 +43,7 @@ void free_interpreter(eval_state_t *eval_state) {
 }
 
 /* Intended to call a specific exported function */
-return_value_t interpret_function(eval_state_t* eval_state, char *func_name, node_t *args) {
+return_value_t interpret_function(eval_state_t *eval_state, char *func_name, node_t *args) {
     func_t *func = find_exported_func(eval_state, eval_state->module, func_name);
     for (int i = 0; i < length(&args); i++) {
         parameter_value_t *param = get_at(&args, i);
@@ -54,11 +54,11 @@ return_value_t interpret_function(eval_state_t* eval_state, char *func_name, nod
     eval_instrs(eval_state);
 
     return_value_t return_value = {0};
-    vec_valtype_t *fun_output = eval_state->module->types->values[func->type].t2;
-    if (fun_output->length == 1) {
-        return_value.type = fun_output->values[0];
-        pop_generic(eval_state, fun_output->values[0], &return_value.val);
-    } else if (fun_output->length > 1) {
+    vec_valtype_t *fun_output = vec_functype_get(eval_state->module->types, func->type).t2;
+    if (vec_valtype_length(fun_output) == 1) {
+        return_value.type = vec_valtype_get(fun_output, 0);
+        pop_generic(eval_state, vec_valtype_get(fun_output, 0), &return_value.val);
+    } else if (vec_valtype_length(fun_output) > 1) {
         interpreter_error(eval_state, "more than one result is not supported currently\n");
     }
 
@@ -76,9 +76,9 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
         return;
     }
 
-    if (_datas->length == 0) return;
+    if (vec_data_length(_datas) == 0) return;
 
-    if (_datas->length > 1) {
+    if (vec_data_length(_datas) > 1) {
         interpreter_error(eval_state, "only one data section allowed");
     }
 
@@ -87,13 +87,13 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
         interpreter_error(eval_state, "no memory found");
     }
 
-    data_t data = _datas->values[0];
+    data_t data = vec_data_get(_datas, 0);
     if (data.memidx != 0) {
         interpreter_error(eval_state, "data section only for memory with index 0 supported");
     }
 
-    for (int j = 0; j < data.expression.instructions->length; j++) {
-        eval_instr(eval_state, &data.expression.instructions->values[j]);
+    for (int j = 0; j < vec_instruction_length(data.expression.instructions); j++) {
+        eval_instr(eval_state, vec_instruction_getp(data.expression.instructions, j));
     }
 
     //the result of the expression should be on the operand stack now, so we can consume it
@@ -105,11 +105,12 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
     }
     i32 offset = val.i32;
 
-    if (memory->size * PAGE_SIZE < offset + data.init->length) {
+    if (memory->size * PAGE_SIZE < offset + vec_byte_length(data.init)) {
         interpreter_error(eval_state, "data section does not fit into memory");
     }
 
-    memcpy(memory->data + offset, data.init->values, data.init->length);
+    // TODO: fix unsafe array access
+    memcpy(memory->data + offset, data.init->_elements, data.init->_length);
 }
 
 void init_interpreter(eval_state_t *eval_state) {
@@ -117,20 +118,20 @@ void init_interpreter(eval_state_t *eval_state) {
     memtype_t memtype = {0};
 
     if (eval_state->module->mems != NULL) {
-        if (eval_state->module->mems->length > 1) {
+        if (vec_memtype_length(eval_state->module->mems) > 1) {
             interpreter_error(eval_state, "only one memory section supported");
         }
-        memtype = eval_state->module->mems->values[0];
+        memtype = vec_memtype_get(eval_state->module->mems, 0);
         memory_t *mem = create_memory(memtype.lim.min);
         use_memory(mem);
     }
     if (eval_state->module->imports != NULL) {
-        for (int i = 0; i < eval_state->module->imports->length; i++) {
-            if (eval_state->module->imports->values[i].desc == IMPORTDESC_MEM) {
+        for (int i = 0; i < vec_import_length(eval_state->module->imports); i++) {
+            if (vec_import_get(eval_state->module->imports, i).desc == IMPORTDESC_MEM) {
                 if (hasMem) {
                     interpreter_error(eval_state, "only one memory import supported");
                 } else {
-                    memtype = eval_state->module->imports->values[i].mem;
+                    memtype = vec_import_get(eval_state->module->imports, i).mem;
                     hasMem = true;
                 }
             }
@@ -146,7 +147,7 @@ void init_interpreter(eval_state_t *eval_state) {
     init_datas(eval_state, eval_state->module->data);
 
     if (eval_state->module->has_start) {
-        eval_call(eval_state, &eval_state->module->funcs->values[eval_state->module->start]);
+        eval_call(eval_state, vec_func_getp(eval_state->module->funcs, eval_state->module->start));
         eval_instrs(eval_state);
     }
 
@@ -164,7 +165,7 @@ void eval_instrs(eval_state_t *eval_state) {
 static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
     for (frame_t *frame; (frame = peek_frame(eval_state)) != NULL;) {
         //if the ip is past the last instruction - clean all but the result argument and pop the frame
-        if (frame->ip >= frame->instrs->length) {
+        if (frame->ip >= vec_instruction_length(frame->instrs)) {
             if (frame->context == FUNCTION_CONTEXT) {
                 clean_to_func_marker(eval_state);
             } else if (frame->context == CONTROL_CONTEXT || frame->context == LOOP_CONTEXT) {
@@ -174,7 +175,7 @@ static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
             continue;
         }
 
-        return &frame->instrs->values[frame->ip++];
+        return vec_instruction_getp(frame->instrs, frame->ip++);
     }
 }
 

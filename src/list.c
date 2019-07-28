@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include "list.h"
 
-void list_init(node_t **head_ref){
+void list_init(node_t **head_ref) {
     *head_ref = NULL;
 }
 

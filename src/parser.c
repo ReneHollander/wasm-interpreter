@@ -13,24 +13,12 @@ typedef struct parser_state {
     parse_error_f parse_error;
 } parser_state_t;
 
-#define MAKE_NEXT_VEC(result_type, element_type, generator_func, name) \
-static inline result_type *name(parser_state_t *state) { \
+#define MAKE_NEXT_VEC(name, generator_func) \
+static inline CAT(CAT(vec_, name), _t) *CAT(CAT(next_, name), _vec)(parser_state_t *state) { \
     u32 n = next_u32(state); \
-    result_type *vec = malloc(sizeof(result_type) + (sizeof(element_type) * n)); \
-    vec->length = n; \
+    CAT(CAT(vec_, name), _t) *vec = CAT(CAT(vec_, name), _create)(); \
     for (int i = 0; i < n; i++) { \
-        vec->values[i] = generator_func(state); \
-    } \
-    return vec; \
-}
-
-#define MAKE_NEXT_VEC_BY_REFERENCE(result_type, element_type, generator_func, name) \
-static inline result_type *name(parser_state_t *state) { \
-    u32 n = next_u32(state); \
-    result_type *vec = malloc(sizeof(result_type) + (sizeof(element_type) * n)); \
-    vec->length = n; \
-    for (int i = 0; i < n; i++) { \
-        generator_func(state, &vec->values[i]); \
+        CAT(CAT(vec_, name), _add)(vec, generator_func(state)); \
     } \
     return vec; \
 }
@@ -153,42 +141,41 @@ static inline labelidx next_labelidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-MAKE_NEXT_VEC(vec_byte_t, byte, next_byte, next_vec_byte)
+MAKE_NEXT_VEC(byte, next_byte)
 
-MAKE_NEXT_VEC(vec_typeidx_t, typeidx, next_typeidx, next_vec_typeidx)
+MAKE_NEXT_VEC(typeidx, next_typeidx)
 
-MAKE_NEXT_VEC(vec_funcidx_t, funcidx, next_funcidx, next_vec_funcidx)
+MAKE_NEXT_VEC(funcidx, next_funcidx)
 
-MAKE_NEXT_VEC(vec_labelidx_t, labelidx, next_labelidx, next_vec_labelidx)
+MAKE_NEXT_VEC(labelidx, next_labelidx)
 
 static inline name next_name(parser_state_t *state) {
-    vec_byte_t *vec = next_vec_byte(state);
-    name name = malloc(sizeof(char) * (vec->length + 1));
-    memcpy(name, vec->values, sizeof(char) * vec->length);
-    name[vec->length] = '\0';
-    free(vec);
+    // TODO: Should not use internal vec API.
+    vec_byte_t *vec = next_byte_vec(state);
+    name name = malloc(sizeof(char) * (vec->_length + 1));
+    memcpy(name, vec->_elements, sizeof(char) * vec->_length);
+    name[vec->_length] = '\0';
+    vec_byte_free(vec);
     return name;
 }
 
-static inline void parse_instruction(parser_state_t *state, instruction_t *instruction);
+static inline instruction_t next_instruction(parser_state_t *state);
 
-static inline instruction_t *allocate_instruction(vec_instruction_t **vec) {
-    (*vec)->length = (*vec)->length + 1;
-    *vec = realloc(*vec, (sizeof(vec_instruction_t) + (sizeof(instruction_t) * (*vec)->length)));
-    return &((*vec)->values[(*vec)->length - 1]);
+static inline memarg_t next_memarg(parser_state_t *state) {
+    memarg_t memarg;
+    memarg.align = next_u32(state);
+    memarg.offset = next_u32(state);
+    return memarg;
 }
 
-static inline void parse_memarg(parser_state_t *state, memarg_t *memarg) {
-    memarg->align = next_u32(state);
-    memarg->offset = next_u32(state);
+static inline insn_br_table_t next_insn_br_table(parser_state_t *state) {
+    insn_br_table_t table;
+    table.labels = next_labelidx_vec(state);
+    table.default_label = next_labelidx(state);
+    return table;
 }
 
-static inline void parse_insn_br_table(parser_state_t *state, insn_br_table_t *table) {
-    table->labels = next_vec_labelidx(state);
-    table->default_label = next_labelidx(state);
-}
-
-static inline valtype_t parse_valtype(parser_state_t *state) {
+static inline valtype_t next_valtype(parser_state_t *state) {
     switch (next_byte(state)) {
         case 0x7F:
             return VALTYPE_I32;
@@ -204,79 +191,83 @@ static inline valtype_t parse_valtype(parser_state_t *state) {
     }
 }
 
-MAKE_NEXT_VEC(vec_valtype_t, valtype_t, parse_valtype, parse_vec_valtype)
+MAKE_NEXT_VEC(valtype, next_valtype)
 
-static inline void parse_blocktype(parser_state_t *state, blocktype_t *blocktype) {
+static inline blocktype_t next_blocktype(parser_state_t *state) {
+    blocktype_t blocktype;
     if (peek_byte(state) == 0x40) {
         next_byte(state);
-        blocktype->empty = true;
+        blocktype.empty = true;
     } else {
-        blocktype->type = parse_valtype(state);
+        blocktype.type = next_valtype(state);
     }
+    return blocktype;
 }
 
-static inline void parse_insn_block(parser_state_t *state, insn_block_t *block) {
-    parse_blocktype(state, &block->resulttype);
-    block->instructions = calloc(1, sizeof(vec_instruction_t));
+static inline insn_block_t next_insn_block(parser_state_t *state) {
+    insn_block_t block;
+    block.resulttype = next_blocktype(state);
+    block.instructions = vec_instruction_create();
     while (peek_byte(state) != 0x0B) {
-        instruction_t *allocated = allocate_instruction(&block->instructions);
-        parse_instruction(state, allocated);
+        vec_instruction_add(block.instructions, next_instruction(state));
     }
     next_byte(state);
+    return block;
 }
 
-static inline void parse_insn_if(parser_state_t *state, insn_if_t *if_block) {
-    parse_blocktype(state, &if_block->resulttype);
-    if_block->ifpath = calloc(1, sizeof(vec_instruction_t));
+static inline insn_if_t next_insn_if(parser_state_t *state) {
+    insn_if_t if_block;
+    if_block.resulttype = next_blocktype(state);
+    if_block.ifpath = vec_instruction_create();
     while (peek_byte(state) != OP_ELSE && peek_byte(state) != 0x0B) {
-        instruction_t *allocated = allocate_instruction(&if_block->ifpath);
-        parse_instruction(state, allocated);
+        vec_instruction_add(if_block.ifpath, next_instruction(state));
     }
     if (peek_byte(state) == OP_ELSE) {
         next_byte(state);
-        if_block->elsepath = calloc(1, sizeof(vec_instruction_t));
+        if_block.elsepath = vec_instruction_create();
         while (peek_byte(state) != 0x0B) {
-            instruction_t *allocated = allocate_instruction(&if_block->elsepath);
-            parse_instruction(state, allocated);
+            vec_instruction_add(if_block.elsepath, next_instruction(state));
         }
     } else {
-        if_block->elsepath = NULL;
+        if_block.elsepath = NULL;
     }
     next_byte(state);
+    return if_block;
 }
 
-static inline void parse_instruction(parser_state_t *state, instruction_t *instruction) {
-    instruction->opcode = next_byte(state);
-    switch (instruction->opcode) {
+static inline instruction_t next_instruction(parser_state_t *state) {
+    instruction_t instruction;
+    instruction.opcode = next_byte(state);
+    switch (instruction.opcode) {
         case OP_BLOCK:
         case OP_LOOP:
-            parse_insn_block(state, &instruction->block);
+            instruction.block = next_insn_block(state);
             break;
         case OP_IF:
-            parse_insn_if(state, &instruction->if_block);
+            instruction.if_block = next_insn_if(state);
             break;
         case OP_BR:
         case OP_BR_IF:
-            instruction->labelidx = next_labelidx(state);
+            instruction.labelidx = next_labelidx(state);
             break;
         case OP_BR_TABLE:
-            parse_insn_br_table(state, &instruction->table);
+            instruction.table = next_insn_br_table(state);
             break;
         case OP_CALL:
-            instruction->funcidx = next_funcidx(state);
+            instruction.funcidx = next_funcidx(state);
             break;
         case OP_CALL_INDIRECT:
-            instruction->typeidx = next_typeidx(state);
+            instruction.typeidx = next_typeidx(state);
             if (next_byte(state) != 0x00) state->parse_error("invalid tableidx for call indirect");
             break;
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
         case OP_LOCAL_TEE:
-            instruction->localidx = next_localidx(state);
+            instruction.localidx = next_localidx(state);
             break;
         case OP_GLOBAL_GET:
         case OP_GLOBAL_SET:
-            instruction->globalidx = next_globalidx(state);
+            instruction.globalidx = next_globalidx(state);
             break;
         case OP_I32_LOAD :
         case OP_I64_LOAD:
@@ -301,7 +292,7 @@ static inline void parse_instruction(parser_state_t *state, instruction_t *instr
         case OP_I64_STORE8 :
         case OP_I64_STORE16 :
         case OP_I64_STORE32 :
-            parse_memarg(state, &instruction->memarg);
+            instruction.memarg = next_memarg(state);
             break;
         case OP_MEMORY_SIZE:
             if (next_byte(state) != 0x00) state->parse_error("unknown index for memory.size");
@@ -310,16 +301,16 @@ static inline void parse_instruction(parser_state_t *state, instruction_t *instr
             if (next_byte(state) != 0x00) state->parse_error("unknown index for memory.grow");
             break;
         case OP_I32_CONST:
-            instruction->const_i32 = next_i32(state);
+            instruction.const_i32 = next_i32(state);
             break;
         case OP_I64_CONST:
-            instruction->const_i64 = next_i64(state);
+            instruction.const_i64 = next_i64(state);
             break;
         case OP_F32_CONST:
-            instruction->const_f32 = next_f32(state);
+            instruction.const_f32 = next_f32(state);
             break;
         case OP_F64_CONST:
-            instruction->const_f64 = next_f64(state);
+            instruction.const_f64 = next_f64(state);
             break;
         case OP_UNREACHABLE:
         case OP_NOP:
@@ -454,55 +445,65 @@ static inline void parse_instruction(parser_state_t *state, instruction_t *instr
             state->parse_error("unknown opcode");
             __builtin_unreachable();
     }
+    return instruction;
 }
 
-void parse_expression(parser_state_t *state, expression_t *expression) {
-    expression->instructions = calloc(1, sizeof(vec_instruction_t));
+expression_t next_expression(parser_state_t *state) {
+    expression_t expression;
+    expression.instructions = vec_instruction_create();
     while (peek_byte(state) != 0x0B) {
-        instruction_t *allocated = allocate_instruction(&expression->instructions);
-        parse_instruction(state, allocated);
+        vec_instruction_add(expression.instructions, next_instruction(state));
     }
     next_byte(state);
+    return expression;
 }
 
-static inline void parse_limit(parser_state_t *state, limits_t *limits) {
+static inline limits_t next_limit(parser_state_t *state) {
+    limits_t limits;
     switch (next_byte(state)) {
         case 0x00:
-            limits->has_max = false;
-            limits->min = next_u32(state);
+            limits.has_max = false;
+            limits.min = next_u32(state);
             break;
         case 0x01:
-            limits->has_max = true;
-            limits->min = next_u32(state);
-            limits->max = next_u32(state);
+            limits.has_max = true;
+            limits.min = next_u32(state);
+            limits.max = next_u32(state);
             break;
         default:
             state->parse_error("unknown limit type");
             __builtin_unreachable();
     }
+    return limits;
 }
 
-static inline void parse_functype(parser_state_t *state, functype_t *functype) {
+static inline functype_t next_functype(parser_state_t *state) {
+    functype_t functype;
     byte opcode = next_byte(state);
     if (opcode != 0x60) state->parse_error("expected opcode 0x60");
-    functype->t1 = parse_vec_valtype(state);
-    functype->t2 = parse_vec_valtype(state);
+    functype.t1 = next_valtype_vec(state);
+    functype.t2 = next_valtype_vec(state);
+    return functype;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_functype_t, functype_t, parse_functype, parse_vec_functype)
+MAKE_NEXT_VEC(functype, next_functype)
 
-static void parse_type_section(parser_state_t *state, section_t *section) {
-    section->type_section.types = parse_vec_functype(state);
+static type_section_t next_type_section(parser_state_t *state) {
+    type_section_t type_section;
+    type_section.types = next_functype_vec(state);
+    return type_section;
 }
 
-static inline void parse_tabletype(parser_state_t *state, tabletype_t *tabletype) {
+static inline tabletype_t next_tabletype(parser_state_t *state) {
+    tabletype_t tabletype;
     if (next_byte(state) != 0x70) state->parse_error("unknown elemtype");
-    parse_limit(state, &tabletype->lim);
+    tabletype.lim = next_limit(state);
+    return tabletype;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_tabletype_t, tabletype_t, parse_tabletype, parse_vec_tabletype)
+MAKE_NEXT_VEC(tabletype, next_tabletype)
 
-static inline mutability_t parse_mutability(parser_state_t *state) {
+static inline mutability_t next_mutability(parser_state_t *state) {
     switch (next_byte(state)) {
         case 0x00:
             return MUTABILITY_CONST;
@@ -514,195 +515,236 @@ static inline mutability_t parse_mutability(parser_state_t *state) {
     }
 }
 
-static inline void parse_globaltype(parser_state_t *state, globaltype_t *globaltype) {
-    globaltype->t = parse_valtype(state);
-    globaltype->m = parse_mutability(state);
+static inline globaltype_t next_globaltype(parser_state_t *state) {
+    globaltype_t globaltype;
+    globaltype.t = next_valtype(state);
+    globaltype.m = next_mutability(state);
+    return globaltype;
 }
 
-static inline void parse_memtype(parser_state_t *state, memtype_t *memtype) {
-    parse_limit(state, &memtype->lim);
+static inline memtype_t next_memtype(parser_state_t *state) {
+    memtype_t memtype;
+    memtype.lim = next_limit(state);
+    return memtype;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_memtype_t, memtype_t, parse_memtype, parse_vec_memtype)
+MAKE_NEXT_VEC(memtype, next_memtype)
 
-static inline void parse_import(parser_state_t *state, import_t *import) {
-    import->module = next_name(state);
-    import->name = next_name(state);
-    import->desc = next_byte(state);
+static inline import_t next_import(parser_state_t *state) {
+    import_t import;
+    import.module = next_name(state);
+    import.name = next_name(state);
+    import.desc = next_byte(state);
 
-    switch (import->desc) {
+    switch (import.desc) {
         case IMPORTDESC_FUNC:
-            import->func = next_typeidx(state);
+            import.func = next_typeidx(state);
             break;
         case IMPORTDESC_TABLE:
-            parse_tabletype(state, &import->table);
+            import.table = next_tabletype(state);
             break;
         case IMPORTDESC_MEM:
-            parse_memtype(state, &import->mem);
+            import.mem = next_memtype(state);
             break;
         case IMPORTDESC_GLOBAL:
-            parse_globaltype(state, &import->global);
+            import.global = next_globaltype(state);
             break;
         default:
             state->parse_error("unknown importdesc type");
             __builtin_unreachable();
     }
+    return import;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_import_t, import_t, parse_import, parse_vec_import)
+MAKE_NEXT_VEC(import, next_import)
 
-static void parse_import_section(parser_state_t *state, section_t *section) {
-    section->import_section.imports = parse_vec_import(state);
+static import_section_t next_import_section(parser_state_t *state) {
+    import_section_t import_section;
+    import_section.imports = next_import_vec(state);
+    return import_section;
 }
 
-static void parse_function_section(parser_state_t *state, section_t *section) {
-    section->function_section.functions = next_vec_typeidx(state);
+static function_section_t next_function_section(parser_state_t *state) {
+    function_section_t function_section;
+    function_section.functions = next_typeidx_vec(state);
+    return function_section;
 }
 
-static void parse_table_section(parser_state_t *state, section_t *section) {
-    section->table_section.tables = parse_vec_tabletype(state);
+static table_section_t next_table_section(parser_state_t *state) {
+    table_section_t table_section;
+    table_section.tables = next_tabletype_vec(state);
+    return table_section;
 }
 
-static void parse_memory_section(parser_state_t *state, section_t *section) {
-    section->memory_section.memories = parse_vec_memtype(state);
+static memory_section_t next_memory_section(parser_state_t *state) {
+    memory_section_t memory_section;
+    memory_section.memories = next_memtype_vec(state);
+    return memory_section;
 }
 
-static inline void parse_global(parser_state_t *state, global_t *global) {
-    parse_globaltype(state, &global->gt);
-    parse_expression(state, &global->e);
+static inline global_t next_global(parser_state_t *state) {
+    global_t global;
+    global.gt = next_globaltype(state);
+    global.e = next_expression(state);
+    return global;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_global_t, global_t, parse_global, parse_vec_global)
+MAKE_NEXT_VEC(global, next_global)
 
-static void parse_global_section(parser_state_t *state, section_t *section) {
-    section->global_section.globals = parse_vec_global(state);
+static global_section_t next_global_section(parser_state_t *state) {
+    global_section_t global_section;
+    global_section.globals = next_global_vec(state);
+    return global_section;
 }
 
-static inline void parse_export(parser_state_t *state, export_t *export) {
-    export->name = next_name(state);
-    export->desc = next_byte(state);
+static inline export_t next_export(parser_state_t *state) {
+    export_t export;
+    export.name = next_name(state);
+    export.desc = next_byte(state);
 
-    switch (export->desc) {
+    switch (export.desc) {
         case EXPORTDESC_FUNC:
-            export->func = next_funcidx(state);
+            export.func = next_funcidx(state);
             break;
         case EXPORTDESC_TABLE:
-            export->table = next_tableidx(state);
+            export.table = next_tableidx(state);
             break;
         case EXPORTDESC_MEM:
-            export->mem = next_memidx(state);
+            export.mem = next_memidx(state);
             break;
         case EXPORTDESC_GLOBAL:
-            export->global = next_globalidx(state);
+            export.global = next_globalidx(state);
             break;
         default:
             state->parse_error("unknown exportdesc type");
             __builtin_unreachable();
     }
+    return export;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_export_t, export_t, parse_export, parse_vec_export)
+MAKE_NEXT_VEC(export, next_export)
 
-static void parse_export_section(parser_state_t *state, section_t *section) {
-    section->export_section.exports = parse_vec_export(state);
+static export_section_t next_export_section(parser_state_t *state) {
+    export_section_t export_section;
+    export_section.exports = next_export_vec(state);
+    return export_section;
 }
 
-static void parse_start_section(parser_state_t *state, section_t *section) {
-    section->start_section.start = next_funcidx(state);
+static start_section_t next_start_section(parser_state_t *state) {
+    start_section_t start_section;
+    start_section.start = next_funcidx(state);
+    return start_section;
 }
 
-static inline void parse_element(parser_state_t *state, element_t *element) {
-    element->table = next_tableidx(state);
-    parse_expression(state, &element->offset);
-    element->init = next_vec_funcidx(state);
+static inline element_t next_element(parser_state_t *state) {
+    element_t element;
+    element.table = next_tableidx(state);
+    element.offset = next_expression(state);
+    element.init = next_funcidx_vec(state);
+    return element;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_element_t, element_t, parse_element, parse_vec_element)
+MAKE_NEXT_VEC(element, next_element)
 
-static void parse_element_section(parser_state_t *state, section_t *section) {
-    section->element_section.elements = parse_vec_element(state);
+static element_section_t next_element_section(parser_state_t *state) {
+    element_section_t element_section;
+    element_section.elements = next_element_vec(state);
+    return element_section;
 }
 
-static inline void parse_locals(parser_state_t *state, locals_t *locals) {
-    locals->n = next_u32(state);
-    locals->t = parse_valtype(state);
+static inline locals_t next_locals(parser_state_t *state) {
+    locals_t locals;
+    locals.n = next_u32(state);
+    locals.t = next_valtype(state);
+    return locals;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_locals_t, locals_t, parse_locals, parse_vec_locals);
+MAKE_NEXT_VEC(locals, next_locals);
 
-static inline void parse_func(parser_state_t *state, func_t *func) {
+static inline func_t next_func(parser_state_t *state) {
+    func_t func;
     u32 size = next_u32(state);
-    func->locals = parse_vec_locals(state);
-    parse_expression(state, &func->expression);
+    func.locals = next_locals_vec(state);
+    func.expression = next_expression(state);
+    return func;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_func_t, func_t, parse_func, parse_vec_func)
+MAKE_NEXT_VEC(func, next_func)
 
-static void parse_code_section(parser_state_t *state, section_t *section) {
-    section->code_section.funcs = parse_vec_func(state);
+static code_section_t next_code_section(parser_state_t *state) {
+    code_section_t code_section;
+    code_section.funcs = next_func_vec(state);
+    return code_section;
 }
 
-static inline void parse_data(parser_state_t *state, data_t *data) {
-    data->memidx = next_memidx(state);
-    parse_expression(state, &data->expression);
-    data->init = next_vec_byte(state);
+static inline data_t next_data(parser_state_t *state) {
+    data_t data;
+    data.memidx = next_memidx(state);
+    data.expression = next_expression(state);
+    data.init = next_byte_vec(state);
+    return data;
 }
 
-MAKE_NEXT_VEC_BY_REFERENCE(vec_data_t, data_t, parse_data, parse_vec_data)
+MAKE_NEXT_VEC(data, next_data)
 
-static void parse_data_section(parser_state_t *state, section_t *section) {
-    section->data_section.datas = parse_vec_data(state);
+static data_section_t next_data_section(parser_state_t *state) {
+    data_section_t data_section;
+    data_section.datas = next_data_vec(state);
+    return data_section;
 }
 
-static void parse_section(parser_state_t *state, section_t *section) {
+static section_t next_section(parser_state_t *state) {
+    section_t section;
+
     byte id = next_byte(state);
     if (id > 11) state->parse_error("invalid section id");
-    section->id = id;
+    section.id = id;
 
     u32 size = next_u32(state);
-    section->size = size;
+    section.size = size;
 
-    switch (section->id) {
+    switch (section.id) {
         case SECTION_TYPE_CUSTOM:
-            advance(state, section->size);
+            advance(state, section.size);
             break;
         case SECTION_TYPE_TYPE:
-            parse_type_section(state, section);
+            section.type_section = next_type_section(state);
             break;
         case SECTION_TYPE_IMPORT:
-            parse_import_section(state, section);
+            section.import_section = next_import_section(state);
             break;
         case SECTION_TYPE_FUNCTION:
-            parse_function_section(state, section);
+            section.function_section = next_function_section(state);
             break;
         case SECTION_TYPE_TABLE:
-            parse_table_section(state, section);
+            section.table_section = next_table_section(state);
             break;
         case SECTION_TYPE_MEMORY:
-            parse_memory_section(state, section);
+            section.memory_section = next_memory_section(state);
             break;
         case SECTION_TYPE_GLOBAL:
-            parse_global_section(state, section);
+            section.global_section = next_global_section(state);
             break;
         case SECTION_TYPE_EXPORT:
-            parse_export_section(state, section);
+            section.export_section = next_export_section(state);
             break;
         case SECTION_TYPE_START:
-            parse_start_section(state, section);
+            section.start_section = next_start_section(state);
             break;
         case SECTION_TYPE_ELEMENT:
-            parse_element_section(state, section);
+            section.element_section = next_element_section(state);
             break;
         case SECTION_TYPE_CODE:
-            parse_code_section(state, section);
+            section.code_section = next_code_section(state);
             break;
         case SECTION_TYPE_DATA:
-            parse_data_section(state, section);
+            section.data_section = next_data_section(state);
             break;
         default:
             state->parse_error("unknown section type");
             __builtin_unreachable();
     }
+    return section;
 }
 
 static void handle_imports(module_t *module, parse_error_f parse_error) {
@@ -710,39 +752,39 @@ static void handle_imports(module_t *module, parse_error_f parse_error) {
         uint32_t func_count = 0;
         uint32_t global_count = 0;
 
-        for (int i = 0; i < module->imports->length; i++) {
-            import_t import = module->imports->values[i];
-
-            if (import.desc == IMPORTDESC_FUNC) {
+        vec_import_iterator_t it = vec_import_iterator(module->imports);
+        while (vec_import_has_next(&it)) {
+            import_t *import = vec_import_nextp(&it);
+            if (import->desc == IMPORTDESC_FUNC) {
                 func_count++;
-            } else if (import.desc == IMPORTDESC_TABLE) {
+            } else if (import->desc == IMPORTDESC_TABLE) {
                 //do nothing for now
-            } else if (import.desc == IMPORTDESC_GLOBAL) {
+            } else if (import->desc == IMPORTDESC_GLOBAL) {
                 global_count++;
-            } else if (import.desc == IMPORTDESC_MEM) {
+            } else if (import->desc == IMPORTDESC_MEM) {
                 //do nothing for now
             } else {
                 parse_error("unknown import desc");
             }
         }
-
-        func_count += module->funcs->length;
-        module->funcs = realloc(module->funcs, sizeof(vec_func_t) + (sizeof(func_t) * func_count));
-
-        for (int i = func_count - 1; i >= 0; i--) {
-            if (i - module->funcs->length >= 0) {
-                module->funcs->values[i] = module->funcs->values[i - module->funcs->length];
-            }
-        }
-
-        global_count += module->globals->length;
-        module->globals = realloc(module->globals, sizeof(vec_global_t) + sizeof(globaltype_t) * global_count);
-
-        for (int i = global_count - 1; i >= 0; i--) {
-            if (i - module->globals->length >= 0) {
-                module->globals->values[i] = module->globals->values[i - module->globals->length];
-            }
-        }
+        // TODO: figure this out.
+//        func_count += vec_func_length(module->funcs);
+//        module->funcs = realloc(module->funcs, sizeof(vec_func_t) + (sizeof(func_t) * func_count));
+//
+//        for (int i = func_count - 1; i >= 0; i--) {
+//            if (i - module->funcs->length >= 0) {
+//                module->funcs->values[i] = module->funcs->values[i - module->funcs->length];
+//            }
+//        }
+//
+//        global_count += module->globals->length;
+//        module->globals = realloc(module->globals, sizeof(vec_global_t) + sizeof(globaltype_t) * global_count);
+//
+//        for (int i = global_count - 1; i >= 0; i--) {
+//            if (i - module->globals->length >= 0) {
+//                module->globals->values[i] = module->globals->values[i - module->globals->length];
+//            }
+//        }
     }
 }
 
@@ -772,8 +814,7 @@ module_t *parse(FILE *input_file, parse_error_f parse_error) {
         if (next == EOF) break;
         ungetc(next, state.input);
 
-        section_t section;
-        parse_section(&state, &section);
+        section_t section = next_section(&state);
 
         switch (section.id) {
             case SECTION_TYPE_TYPE:
@@ -815,11 +856,11 @@ module_t *parse(FILE *input_file, parse_error_f parse_error) {
         }
     }
 
-    for (u32 i = 0; i < function_section.functions->length; i++) {
-        module->funcs->values[i].type = function_section.functions->values[i];
+    for (u32 i = 0; i < vec_typeidx_length(function_section.functions); i++) {
+        vec_func_getp(module->funcs, i)->type = vec_typeidx_get(function_section.functions, i);
     }
 
-    handle_imports(module, parse_error);
+//    handle_imports(module, parse_error);
 
     return module;
 }

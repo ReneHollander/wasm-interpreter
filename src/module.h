@@ -43,7 +43,7 @@ typedef struct import {
     };
 } import_t;
 
-DEFINE_VEC_STRUCT(import);
+CREATE_VEC(import_t, import);
 
 typedef struct import_section {
     vec_import_t *imports;
@@ -66,7 +66,7 @@ typedef struct global {
     expression_t e;
 } global_t;
 
-DEFINE_VEC_STRUCT(global);
+CREATE_VEC(global_t, global);
 
 typedef struct global_section {
     vec_global_t *globals;
@@ -90,7 +90,7 @@ typedef struct export {
     };
 } export_t;
 
-DEFINE_VEC_STRUCT(export);
+CREATE_VEC(export_t, export);
 
 typedef struct export_section {
     vec_export_t *exports;
@@ -106,7 +106,7 @@ typedef struct element {
     vec_funcidx_t *init;
 } element_t;
 
-DEFINE_VEC_STRUCT(element);
+CREATE_VEC(element_t, element);
 
 typedef struct element_section {
     vec_element_t *elements;
@@ -117,7 +117,7 @@ typedef struct locals {
     valtype_t t;
 } locals_t;
 
-DEFINE_VEC_STRUCT(locals);
+CREATE_VEC(locals_t, locals);
 
 typedef struct func {
     typeidx type;
@@ -125,7 +125,7 @@ typedef struct func {
     expression_t expression;
 } func_t;
 
-DEFINE_VEC_STRUCT(func);
+CREATE_VEC(func_t, func);
 
 typedef struct code_section {
     vec_func_t *funcs;
@@ -137,7 +137,7 @@ typedef struct data {
     vec_byte_t *init;
 } data_t;
 
-DEFINE_VEC_STRUCT(data);
+CREATE_VEC(data_t, data);
 
 typedef struct data_section {
     vec_data_t *datas;

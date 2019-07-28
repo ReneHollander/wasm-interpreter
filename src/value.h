@@ -32,21 +32,4 @@ typedef u32 globalidx;
 typedef u32 localidx;
 typedef u32 labelidx;
 
-#define DEFINE_VEC_STRUCT(type) \
-typedef struct CAT(vec_, type) { \
-    u32 length; \
-    CAT(type, _t) values[0]; \
-} CAT(CAT(vec_, type), _t)
-
-#define DEFINE_VEC_STRUCT_PRIMITIVE(type) \
-typedef struct CAT(vec_, type) { \
-    u32 length; \
-    type values[0]; \
-} CAT(CAT(vec_, type), _t)
-
-DEFINE_VEC_STRUCT_PRIMITIVE(byte);
-DEFINE_VEC_STRUCT_PRIMITIVE(typeidx);
-DEFINE_VEC_STRUCT_PRIMITIVE(funcidx);
-DEFINE_VEC_STRUCT_PRIMITIVE(labelidx);
-
 #endif // VALUE_H

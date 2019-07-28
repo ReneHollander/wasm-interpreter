@@ -31,7 +31,7 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
     opcode_t opcode = instr->opcode;
 
     if (opcode == OP_CALL) {
-        eval_call(eval_state, &eval_state->module->funcs->values[instr->funcidx]);
+        eval_call(eval_state, vec_func_getp(eval_state->module->funcs, instr->funcidx));
     } else if (opcode == OP_NOP) {
         //do nothing
     } else if (opcode == OP_UNREACHABLE) {
@@ -59,15 +59,16 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
 }
 
 void eval_call(eval_state_t *eval_state, func_t *func) {
-    vec_valtype_t *fun_output = eval_state->module->types->values[func->type].t2;
-    push_frame(eval_state, func->expression.instructions, fun_output->length, fun_output->values[0], FUNCTION_CONTEXT);
+    functype_t *ft = vec_functype_getp(eval_state->module->types, func->type);
+    push_frame(eval_state, func->expression.instructions, vec_valtype_length(ft->t2), vec_valtype_get_or(ft->t2, 0, 0),
+               FUNCTION_CONTEXT);
     frame_t *current = peek_frame(eval_state);
 
-    u32 num_params = eval_state->module->types->values[func->type].t1->length;
+    u32 num_params = vec_valtype_length(ft->t1);
     u32 num_locals = 0;
 
-    for (int i = 0; i < func->locals->length; i++) {
-        num_locals += func->locals->values[i].n;
+    for (int i = 0; i < vec_locals_length(func->locals); i++) {
+        num_locals += vec_locals_get(func->locals, i).n;
     }
 
     uint32_t num_total = num_locals + num_params;
@@ -75,7 +76,7 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
     current->locals = malloc(num_total * sizeof(local_entry_t));
     current->num_locals = num_total;
 
-    init_params(eval_state, eval_state->module->types->values[func->type].t1);
+    init_params(eval_state, ft->t1);
     init_locals(eval_state, func->locals, num_params);
     push_func_marker(eval_state->opd_stack);
 }
@@ -88,7 +89,7 @@ static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
         interpreter_error(eval_state, "call_indirect referencing uninitialized table entry\n");
     }
 
-    func_t *func = &eval_state->module->funcs->values[table_entry->funcidx];
+    func_t *func = vec_func_getp(eval_state->module->funcs, table_entry->funcidx);
     eval_call(eval_state, func);
 }
 
@@ -116,8 +117,8 @@ static void eval_br_table(eval_state_t *eval_state, instruction_t *instr) {
     i32 index = pop_opd_i32(eval_state);
     vec_labelidx_t *labels = instr->table.labels;
 
-    if (index < labels->length) {
-        instr->labelidx = labels->values[index];
+    if (index < vec_labelidx_length(labels)) {
+        instr->labelidx = vec_labelidx_get(labels, index);
         eval_br(eval_state, instr);
     } else {
         instr->labelidx = instr->table.default_label;

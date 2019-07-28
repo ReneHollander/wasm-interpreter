@@ -51,11 +51,11 @@ def invoke_test(test_binary, module, fn, args):
     try:
         result = subprocess.run(runner_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, timeout=1)
         if result.returncode != 0:
-            return result.stderr.decode('utf-8').rstrip("\r\n\t "), True
+            return runner_args, result.stderr.decode('utf-8').rstrip("\r\n\t "), True
         else:
-            return result.stdout.decode('utf-8').rstrip("\r\n\t "), False
+            return runner_args, result.stdout.decode('utf-8').rstrip("\r\n\t "), False
     except subprocess.TimeoutExpired as e:
-        return "invocation timed out", True
+        return runner_args, "invocation timed out", True
 
 
 def stringify_call(fn, args):
@@ -114,7 +114,7 @@ def run_suite(name, test_suite, test_binaries):
         if command['type'] == 'assert_return' or command['type'] == 'assert_return_canonical_nan' or command['type'] == 'assert_return_arithmetic_nan':
             action = command['action']
             if action['type'] == 'invoke':
-                result, failed = invoke_test(test_binary, test_binaries + current_module, action['field'], action['args'])
+                run_cmd, result, failed = invoke_test(test_binary, test_binaries + current_module, action['field'], action['args'])
 
                 if not check_result(result, command):
                     failed = True
@@ -127,7 +127,7 @@ def run_suite(name, test_suite, test_binaries):
                     prefix = PREFIX_OK
 
                 if failed or (not failed and not hide_successes):
-                    print(prefix + " " + line_str + stringify_call(action['field'], action['args']) + ": expected=" + stringify_result(command) + ", actual=" + result)
+                    print(prefix + " " + line_str + stringify_call(action['field'], action['args']) + ": expected=" + stringify_result(command) + ", actual=" + result + ". Command: \"" + " ".join(run_cmd) + "\"")
             else:
                 print(PREFIX_WARN + " " + line_str + "Skipping test with action type " + action['type'] + bcolors.ENDC)
                 counts['skipped'] += 1

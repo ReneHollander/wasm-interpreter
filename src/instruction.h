@@ -2,6 +2,7 @@
 #define INSTRUCTION_H
 
 #include "type.h"
+#include "primitive_vec_types.h"
 
 typedef enum opcode {
     OP_UNREACHABLE = 0x00,
@@ -190,7 +191,6 @@ typedef enum opcode {
     OP_F64_REINTERPRET_I64 = 0xBF,
 } opcode_t;
 
-typedef struct instruction instruction_t;
 typedef struct vec_instruction vec_instruction_t;
 
 typedef struct insn_block {
@@ -214,7 +214,7 @@ typedef struct memarg {
     u32 offset;
 } memarg_t;
 
-struct instruction {
+typedef struct instruction {
     union {
         insn_block_t block; // Used by OP_BLOCK and OP_LOOP.
         insn_if_t if_block; // Used by OP_IF and OP_ELSE.
@@ -231,15 +231,14 @@ struct instruction {
         f64 const_f64; // Used by OP_F64_CONST.
     };
     opcode_t opcode;
-};
+} instruction_t;
 
-struct vec_instruction {
-    u32 length;
-    instruction_t values[0];
-};
+CREATE_VEC(instruction_t, instruction)
 
 typedef struct expression {
     vec_instruction_t *instructions;
 } expression_t;
+
+CREATE_VEC(expression_t, expression)
 
 #endif // INSTRUCTION_H
