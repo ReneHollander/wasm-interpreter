@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 
 project(wasm_interpreter C)
 
+set(CMAKE_C_FLAGS_RELEASE "-O3 -flto")
+
 add_library(parser
         src/type.h
         src/instruction.h

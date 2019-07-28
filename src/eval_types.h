@@ -28,6 +28,8 @@ typedef struct global_entry {
     valtype_t valtype;
 } global_entry_t;
 
+CREATE_VEC(global_entry_t, global_entry)
+
 typedef struct local_entry {
     val_t val;
     valtype_t valtype;
@@ -60,7 +62,7 @@ typedef struct table_entry {
 
 typedef struct eval_state {
     vec_frame_t *frames;     /* Head pointer to list of stack and control frames */
-    node_t *globals;    /* Head pointer to list of globals */
+    vec_global_entry_t *globals;    /* Head pointer to list of globals */
     node_t *table;      /* Head pointer to list of table entries */
     node_t *modules;    /* Head pointer to list of all parsed modules */
     stack *opd_stack;   /* Pointer to operand stack */

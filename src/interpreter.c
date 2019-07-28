@@ -143,7 +143,9 @@ void init_interpreter(eval_state_t *eval_state) {
         init_memory(eval_state, memtype);
     }
     init_tables(eval_state);
+
     init_globals(eval_state, eval_state->module->globals);
+
     init_datas(eval_state, eval_state->module->data);
 
     if (eval_state->module->has_start) {
