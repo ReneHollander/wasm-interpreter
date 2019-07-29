@@ -59,6 +59,8 @@ typedef struct table_entry {
     funcidx funcidx;
 } table_entry_t;
 
+CREATE_VEC(table_entry_t, table_entry)
+
 typedef enum marker {
     MARKER_UNKNOWN = 0,
     MARKER_LABEL = 1,              // Marker for labels.
@@ -79,7 +81,7 @@ typedef vec_stack_entry_t opd_stack_t;
 typedef struct eval_state {
     vec_frame_t *frames;     /* Head pointer to list of stack and control frames */
     vec_global_entry_t *globals;    /* Head pointer to list of globals */
-    node_t *table;      /* Head pointer to list of table entries */
+    vec_table_entry_t *tables;      /* Head pointer to list of table entries */
     node_t *modules;    /* Head pointer to list of all parsed modules */
     opd_stack_t *opd_stack;   /* Pointer to operand stack */
     module_t *module;   /* Pointer to current module */

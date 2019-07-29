@@ -30,13 +30,16 @@ eval_state_t *create_interpreter() {
 
     eval_state->opd_stack = vec_stack_entry_create();
     eval_state->frames = vec_frame_create();
-    list_init(&eval_state->table);
+    eval_state->tables = vec_table_entry_create();
     list_init(&eval_state->modules);
 
     return eval_state;
 }
 
 void free_interpreter(eval_state_t *eval_state) {
+    vec_stack_entry_free(eval_state->opd_stack);
+    vec_frame_free(eval_state->frames);
+    vec_table_entry_free(eval_state->tables);
     // TODO: Proper cleanup.
 }
 

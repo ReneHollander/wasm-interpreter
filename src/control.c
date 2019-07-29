@@ -92,7 +92,7 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
 
 static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
     i32 offset = pop_i32(eval_state->opd_stack);
-    table_entry_t *table_entry = get_at(&eval_state->table, offset);
+    table_entry_t *table_entry = vec_table_entry_getp(eval_state->tables, offset);
 
     if (!table_entry->initialized) {
         interpreter_error(eval_state, "call_indirect referencing uninitialized table entry\n");
