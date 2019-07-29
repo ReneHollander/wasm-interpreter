@@ -21,7 +21,7 @@ void init_tables(eval_state_t *eval_state) {
     u32 min = table.lim.min;
 
     for (u32 i = 0; i < min; i++) {
-        vec_table_entry_add(eval_state->tables, (table_entry_t) {
+        vec_table_entry_add(eval_state->table, (table_entry_t) {
                 .funcidx = -1,
                 .initialized = false,
         });
@@ -42,7 +42,7 @@ void init_tables(eval_state_t *eval_state) {
         u32 offset = pop_i32(eval_state->opd_stack);
 
         for (int j = 0; j < vec_funcidx_length(elem.init); j++) {
-            table_entry_t *table_entry = vec_table_entry_getp(eval_state->tables, offset + j);
+            table_entry_t *table_entry = vec_table_entry_getp(eval_state->table, offset + j);
             table_entry->initialized = true;
             table_entry->funcidx = vec_funcidx_get(elem.init, j);
         }

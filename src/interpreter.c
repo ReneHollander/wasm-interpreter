@@ -6,7 +6,6 @@
 #include "instruction.h"
 #include "stack.h"
 #include "numeric.h"
-#include "list.h"
 #include "memory.h"
 #include "variable.h"
 #include "control.h"
@@ -30,8 +29,8 @@ eval_state_t *create_interpreter() {
 
     eval_state->opd_stack = vec_stack_entry_create();
     eval_state->frames = vec_frame_create();
-    eval_state->tables = vec_table_entry_create();
-    list_init(&eval_state->modules);
+    eval_state->table = vec_table_entry_create();
+    eval_state->modules = vec_module_create();
 
     return eval_state;
 }
@@ -39,16 +38,18 @@ eval_state_t *create_interpreter() {
 void free_interpreter(eval_state_t *eval_state) {
     vec_stack_entry_free(eval_state->opd_stack);
     vec_frame_free(eval_state->frames);
-    vec_table_entry_free(eval_state->tables);
+    vec_table_entry_free(eval_state->table);
     // TODO: Proper cleanup.
 }
 
 /* Intended to call a specific exported function */
-return_value_t interpret_function(eval_state_t *eval_state, char *func_name, node_t *args) {
+return_value_t interpret_function(eval_state_t *eval_state, char *func_name, vec_parameter_value_t *parameters) {
     func_t *func = find_exported_func(eval_state, eval_state->module, func_name);
-    for (int i = 0; i < length(&args); i++) {
-        parameter_value_t *param = get_at(&args, i);
+    vec_parameter_value_iterator_t it = vec_parameter_value_iterator(parameters, IT_FORWARDS);
+    while (vec_parameter_value_has_next(&it)) {
+        parameter_value_t *param = vec_parameter_value_nextp(&it);
         push_generic(eval_state->opd_stack, param->type, param->val);
+
     }
 
     eval_call(eval_state, func);

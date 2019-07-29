@@ -176,4 +176,6 @@ typedef struct module {
     name name;
 } module_t;
 
+CREATE_VEC(module_t, module)
+
 #endif // MODULE_H

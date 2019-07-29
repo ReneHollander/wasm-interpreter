@@ -21,8 +21,6 @@ add_library(interpreter
         src/stack.h
         src/numeric.c
         src/numeric.h
-        src/list.c
-        src/list.h
         src/memory.c
         src/memory.h
         src/variable.c

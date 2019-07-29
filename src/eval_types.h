@@ -1,7 +1,6 @@
 #ifndef WASM_INTERPRETER_EVAL_TYPES_H
 #define WASM_INTERPRETER_EVAL_TYPES_H
 
-#include "list.h"
 #include "instruction.h"
 #include "module.h"
 
@@ -16,6 +15,8 @@ typedef struct parameter_value {
     val_t val;
     valtype_t type;
 } parameter_value_t;
+
+CREATE_VEC(parameter_value_t, parameter_value)
 
 typedef struct return_value {
     val_t val;
@@ -79,12 +80,12 @@ CREATE_VEC(stack_entry_t, stack_entry)
 typedef vec_stack_entry_t opd_stack_t;
 
 typedef struct eval_state {
-    vec_frame_t *frames;     /* Head pointer to list of stack and control frames */
-    vec_global_entry_t *globals;    /* Head pointer to list of globals */
-    vec_table_entry_t *tables;      /* Head pointer to list of table entries */
-    node_t *modules;    /* Head pointer to list of all parsed modules */
-    opd_stack_t *opd_stack;   /* Pointer to operand stack */
-    module_t *module;   /* Pointer to current module */
+    vec_frame_t *frames;  /* List of stack and control frames. */
+    vec_global_entry_t *globals;  /* List of global variables. */
+    vec_table_entry_t *table;  /* List of table entries. */
+    vec_module_t *modules;  /* List of modules. */
+    opd_stack_t *opd_stack;  /* Operand stack. */
+    module_t *module;  /* Pointer to current module */
 } eval_state_t;
 
 static inline frame_t *peek_func_frame(vec_frame_t *vec) {

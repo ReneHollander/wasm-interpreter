@@ -10,7 +10,7 @@ void init_interpreter(eval_state_t *eval_state);
 
 void free_interpreter(eval_state_t *eval_state);
 
-return_value_t interpret_function(eval_state_t *eval_state, char *func_name, node_t *args);
+return_value_t interpret_function(eval_state_t *eval_state, char *func_name, vec_parameter_value_t *parameters);
 
 void interpreter_error(eval_state_t *eval_state, char *err_message);
 

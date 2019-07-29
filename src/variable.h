@@ -1,7 +1,6 @@
 #ifndef WASM_INTERPRETER_VARIABLE_H
 #define WASM_INTERPRETER_VARIABLE_H
 
-#include "list.h"
 #include "eval_types.h"
 #include "instruction.h"
 #include "module.h"

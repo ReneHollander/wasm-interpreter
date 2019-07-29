@@ -31,16 +31,12 @@ global_t *find_exported_global(eval_state_t *eval_state, module_t *module, char 
 }
 
 func_t *find_func_global(eval_state_t *eval_state, char *module_name, char *func_name) {
-    node_t *cur = eval_state->modules;
-
-    for (int i = 0; cur != NULL; i++) {
-        module_t *module = (module_t *) cur->data;
-
+    vec_module_iterator_t it = vec_module_iterator(eval_state->modules, IT_FORWARDS);
+    while (vec_module_has_next(&it)) {
+        module_t *module = vec_module_nextp(&it);
         if (strcmp(module_name, module->name) == 0) {
             return find_exported_func(eval_state, module, func_name);
         }
-
-        cur = cur->next;
     }
 
     fprintf(stderr, "could not find module with name: %s\n", module_name);
@@ -48,16 +44,12 @@ func_t *find_func_global(eval_state_t *eval_state, char *module_name, char *func
 }
 
 global_t *find_global_global(eval_state_t *eval_state, char *module_name, char *global_name) {
-    node_t *cur = eval_state->modules;
-
-    for (int i = 0; cur != NULL; i++) {
-        module_t *module = (module_t *) cur->data;
-
+    vec_module_iterator_t it = vec_module_iterator(eval_state->modules, IT_FORWARDS);
+    while (vec_module_has_next(&it)) {
+        module_t *module = vec_module_nextp(&it);
         if (strcmp(module_name, module->name) == 0) {
             return find_exported_global(eval_state, module, global_name);
         }
-
-        cur = cur->next;
     }
 
     fprintf(stderr, "could not find module with name: %s\n", module_name);

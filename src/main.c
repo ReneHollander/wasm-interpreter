@@ -3,10 +3,10 @@
 #include <string.h>
 #include <unistd.h>
 #include <stdio.h>
+
 #include "parser.h"
 #include "interpreter.h"
 #include "memory.h"
-#include "list.h"
 #include "variable.h"
 
 char *prg_name;
@@ -46,10 +46,10 @@ int main(int argc, char *argv[]) {
     prg_name = argv[0];
 
     parameter_value_t a;
+    vec_parameter_value_t *parameters = vec_parameter_value_create();
 
     char *module_path = NULL;
     char *function = NULL;
-    node_t *args = NULL;
     int opt;
     while ((opt = getopt(argc, argv, "p:f:a:")) != -1) {
         switch (opt) {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[]) {
                 break;
             case 'a':
                 parse_arg(strdup(optarg), &a);
-                insert_last(&args, &a, sizeof(parameter_value_t));
+                vec_parameter_value_add(parameters, a);
                 break;
             default: /* '?' */
                 usage();
@@ -91,7 +91,7 @@ int main(int argc, char *argv[]) {
     interpreter->module = module;
     init_interpreter(interpreter);
 
-    return_value_t ret = interpret_function(interpreter, function, args);
+    return_value_t ret = interpret_function(interpreter, function, parameters);
 
     if (ret.type == 0) {
         printf("void");
