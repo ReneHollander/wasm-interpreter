@@ -80,14 +80,14 @@ int main(int argc, char *argv[]) {
 
     FILE *input = fopen(module_path, "r");
     if (input == NULL) {
-        fprintf(stderr, "Error opening input file %s: %s\n", module_path, strerror(errno));
+        fprintf(stderr, "Error opening input file %s: %s", module_path, strerror(errno));
         exit(EXIT_FAILURE);
     }
 
     module_t *module = NULL;
     exception_t ex = parse(input, &module);
     if (ex > 0) {
-        fprintf(stderr, "error parsing file: %s\n", exception_code_to_string(ex));
+        fprintf(stderr, "error parsing file: %s", exception_code_to_string(ex));
         exit(1);
     }
     fclose(input);
@@ -96,9 +96,14 @@ int main(int argc, char *argv[]) {
     interpreter->module = module;
     init_interpreter(interpreter);
 
-    return_value_t ret = interpret_function(interpreter, function, parameters);
+    return_value_t ret;
+    ex = interpret_function(interpreter, function, parameters, &ret);
+    if (ex > 0) {
+        fprintf(stderr, "error interpreting: %s", exception_code_to_string(ex));
+        exit(1);
+    }
 
-    if (ret.type == 0) {
+    if (ret.is_void) {
         printf("void");
     } else {
         switch (ret.type) {

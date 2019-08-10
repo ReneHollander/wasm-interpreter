@@ -19,6 +19,7 @@ typedef struct parameter_value {
 CREATE_VEC(parameter_value_t, parameter_value)
 
 typedef struct return_value {
+    bool is_void;
     val_t val;
     valtype_t type;
 } return_value_t;

@@ -779,78 +779,85 @@ static void handle_imports(module_t *module, parse_error_f parse_error) {
     }
 }
 
+static void _parse(FILE *input_file, module_t **module) {
+    parser_state_t state;
+    state.input = input_file;
+
+    *module = calloc(1, sizeof(module_t));
+
+    // Check magic value of module.
+    if (next_byte(&state) != 0x00 || next_byte(&state) != 0x61 || next_byte(&state) != 0x73 ||
+        next_byte(&state) != 0x6D) {
+        THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_MAGIC_VALUE);
+    }
+
+    // Check version number of module.
+    if (next_byte(&state) != 0x01 || next_byte(&state) != 0x00 || next_byte(&state) != 0x00 ||
+        next_byte(&state) != 0x00) {
+        THROW_EXCEPTION(EXCEPTION_PARSER_VERSION_NOT_SUPPORTED);
+    }
+
+    function_section_t function_section;
+
+    while (1) {
+        int next = fgetc(state.input);
+        if (next == EOF) break;
+        ungetc(next, state.input);
+
+        section_t section = next_section(&state);
+
+        switch (section.id) {
+            case SECTION_TYPE_TYPE:
+                (*module)->types = section.type_section.types;
+                break;
+            case SECTION_TYPE_CUSTOM: // Ignore.
+                break;
+            case SECTION_TYPE_IMPORT:
+                (*module)->imports = section.import_section.imports;
+                break;
+            case SECTION_TYPE_FUNCTION:
+                function_section = section.function_section;
+                break;
+            case SECTION_TYPE_TABLE:
+                (*module)->tables = section.table_section.tables;
+                break;
+            case SECTION_TYPE_MEMORY:
+                (*module)->mems = section.memory_section.memories;
+                break;
+            case SECTION_TYPE_GLOBAL:
+                (*module)->globals = section.global_section.globals;
+                break;
+            case SECTION_TYPE_EXPORT:
+                (*module)->exports = section.export_section.exports;
+                break;
+            case SECTION_TYPE_START:
+                (*module)->has_start = true;
+                (*module)->start = section.start_section.start;
+                break;
+            case SECTION_TYPE_ELEMENT:
+                (*module)->elem = section.element_section.elements;
+                break;
+            case SECTION_TYPE_CODE:
+                (*module)->funcs = section.code_section.funcs;
+                break;
+            case SECTION_TYPE_DATA:
+                (*module)->data = section.data_section.datas;
+                break;
+        }
+    }
+
+    for (u32 i = 0; i < vec_typeidx_length(function_section.functions); i++) {
+        vec_func_getp((*module)->funcs, i)->type = vec_typeidx_get(function_section.functions, i);
+    }
+}
+
 exception_t parse(FILE *input_file, module_t **module) {
-    TRY_CATCH(
-            parser_state_t state;
-            state.input = input_file;
-
-            *module = calloc(1, sizeof(module_t));
-
-            // Check magic value of module.
-            if (next_byte(&state) != 0x00 || next_byte(&state) != 0x61 || next_byte(&state) != 0x73 ||
-                next_byte(&state) != 0x6D) {
-                THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_MAGIC_VALUE);
-            }
-
-            // Check version number of module.
-            if (next_byte(&state) != 0x01 || next_byte(&state) != 0x00 || next_byte(&state) != 0x00 ||
-                next_byte(&state) != 0x00) {
-                THROW_EXCEPTION(EXCEPTION_PARSER_VERSION_NOT_SUPPORTED);
-            }
-
-            function_section_t function_section;
-
-            while (1) {
-                int next = fgetc(state.input);
-                if (next == EOF) break;
-                ungetc(next, state.input);
-
-                section_t section = next_section(&state);
-
-                switch (section.id) {
-                    case SECTION_TYPE_TYPE:
-                        (*module)->types = section.type_section.types;
-                        break;
-                    case SECTION_TYPE_CUSTOM: // Ignore.
-                        break;
-                    case SECTION_TYPE_IMPORT:
-                        (*module)->imports = section.import_section.imports;
-                        break;
-                    case SECTION_TYPE_FUNCTION:
-                        function_section = section.function_section;
-                        break;
-                    case SECTION_TYPE_TABLE:
-                        (*module)->tables = section.table_section.tables;
-                        break;
-                    case SECTION_TYPE_MEMORY:
-                        (*module)->mems = section.memory_section.memories;
-                        break;
-                    case SECTION_TYPE_GLOBAL:
-                        (*module)->globals = section.global_section.globals;
-                        break;
-                    case SECTION_TYPE_EXPORT:
-                        (*module)->exports = section.export_section.exports;
-                        break;
-                    case SECTION_TYPE_START:
-                        (*module)->has_start = true;
-                        (*module)->start = section.start_section.start;
-                        break;
-                    case SECTION_TYPE_ELEMENT:
-                        (*module)->elem = section.element_section.elements;
-                        break;
-                    case SECTION_TYPE_CODE:
-                        (*module)->funcs = section.code_section.funcs;
-                        break;
-                    case SECTION_TYPE_DATA:
-                        (*module)->data = section.data_section.datas;
-                        break;
-                }
-            }
-
-            for (u32 i = 0; i < vec_typeidx_length(function_section.functions); i++) {
-                vec_func_getp((*module)->funcs, i)->type = vec_typeidx_get(function_section.functions, i);
-            }
-            return NO_EXCEPTION;,
-            return exception;
+    exception_t ex = NO_EXCEPTION;
+    TRY_CATCH({
+                  _parse(input_file, module);
+              }, {
+                  ex = exception;
+              }
     )
+    return ex;
 }

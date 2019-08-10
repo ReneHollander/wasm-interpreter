@@ -9,24 +9,14 @@
 
 #include "util.h"
 #include "value.h"
-
-static void vec_error(const char *function, const char *format, ...) {
-    char fmt[1024];
-    va_list args;
-    va_start (args, format);
-    snprintf(fmt, sizeof(fmt), "Vector error in %s: %s\n", function, format);
-    vfprintf(stderr, fmt, args); \
-    va_end (args);
-    exit(1);
-}
+#include "exception.h"
 
 typedef enum direction {
     IT_FORWARDS,
     IT_BACKWARDS,
 } direction_t;
 
-#define VEC_ERROR(args...) \
-  vec_error(__FUNCTION__, args)
+#define VEC_ERROR(args...) THROW_EXCEPTION_WITH_MSG(EXCEPTION_VECTOR_EXCEPTION, args)
 
 #define CREATE_VEC_(type, name, fn_prefix, vec_type, it_type) \
 typedef struct CAT(vec_, name) { \

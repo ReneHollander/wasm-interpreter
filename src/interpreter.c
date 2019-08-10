@@ -42,24 +42,24 @@ void free_interpreter(eval_state_t *eval_state) {
     // TODO: Proper cleanup.
 }
 
-/* Intended to call a specific exported function */
-return_value_t interpret_function(eval_state_t *eval_state, char *func_name, vec_parameter_value_t *parameters) {
+static void
+_interpret_function(eval_state_t *eval_state, char *func_name, vec_parameter_value_t *parameters, return_value_t *ret) {
     func_t *func = find_exported_func(eval_state, eval_state->module, func_name);
     vec_parameter_value_iterator_t it = vec_parameter_value_iterator(parameters, IT_FORWARDS);
     while (vec_parameter_value_has_next(&it)) {
         parameter_value_t *param = vec_parameter_value_nextp(&it);
         push_generic(eval_state->opd_stack, param->type, param->val);
-
     }
 
     eval_call(eval_state, func);
     eval_instrs(eval_state);
 
-    return_value_t return_value = {0};
+    ret->is_void = true;
     vec_valtype_t *fun_output = vec_functype_get(eval_state->module->types, func->type).t2;
     if (vec_valtype_length(fun_output) == 1) {
-        return_value.type = vec_valtype_get(fun_output, 0);
-        pop_generic_assert_type(eval_state->opd_stack, vec_valtype_get(fun_output, 0), &return_value.val);
+        ret->is_void = false;
+        ret->type = vec_valtype_get(fun_output, 0);
+        pop_generic_assert_type(eval_state->opd_stack, vec_valtype_get(fun_output, 0), &ret->val);
     } else if (vec_valtype_length(fun_output) > 1) {
         interpreter_error(eval_state, "more than one result is not supported currently\n");
     }
@@ -68,8 +68,19 @@ return_value_t interpret_function(eval_state_t *eval_state, char *func_name, vec
     if (!vec_stack_entry_empty(eval_state->opd_stack)) {
         interpreter_error(eval_state, "operand stack is not empty");
     }
+}
 
-    return return_value;
+/* Intended to call a specific exported function */
+exception_t
+interpret_function(eval_state_t *eval_state, char *func_name, vec_parameter_value_t *parameters, return_value_t *ret) {
+    exception_t ex = NO_EXCEPTION;
+    TRY_CATCH({
+                  _interpret_function(eval_state, func_name, parameters, ret);
+              }, {
+                  ex = exception;
+              }
+    )
+    return ex;
 }
 
 void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
@@ -174,6 +185,7 @@ static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
 
         return vec_instruction_getp(frame->instrs, frame->ip++);
     }
+    return NULL;
 }
 
 void eval_instr(eval_state_t *eval_state, instruction_t *instr) {

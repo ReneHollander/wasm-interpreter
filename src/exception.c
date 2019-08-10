@@ -1,11 +1,22 @@
 #include "exception.h"
 
+#ifndef DISABLE_EXCEPTION_HANDLING
 jmp_buf _exception_jump_buf;
-bool _exception_active = false;
-volatile _exception_data_t _exception_data = {};
+volatile _exception_data_t _exception_data = {
+        .active = false,
+        .code = 0,
+        .file = "",
+        .function = "",
+        .line = 0,
+        .message = "",
+};
+#endif // DISABLE_EXCEPTION_HANDLING
 
-char *exception_to_string[] = {
+const char *exception_to_string[] = {
         [NO_EXCEPTION] = "",
+
+        [EXCEPTION_VECTOR_EXCEPTION] = "vector exception",
+
         [EXCEPTION_PARSER_MEMORY_INDEX_NOT_ZERO] = "parser memory index not zero",
         [EXCEPTION_PARSER_UNEXPECTED_VALTYPE] = "parser unexpected valtype",
         [EXCEPTION_PARSER_EOF_BEFORE_FINISHED] = "parser reached eof before finishing",
@@ -24,6 +35,6 @@ char *exception_to_string[] = {
         [EXCEPTION_PARSER_VERSION_NOT_SUPPORTED] = "parser version not supported",
 };
 
-char *exception_code_to_string(exception_t ex) {
+const char *exception_code_to_string(exception_t ex) {
     return exception_to_string[ex];
 }

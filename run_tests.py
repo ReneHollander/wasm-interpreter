@@ -7,10 +7,15 @@ import sys
 
 import math
 
+if len(sys.argv) < 2:
+    print("first argument has to be the executable under test")
+    exit(1)
+
 hide_successes = True
+hide_warnings = True
 test_dir = 'test/'
 test_build_dir = 'test/build/'
-test_binary = 'cmake-build-debug/wasm_interpreter'
+test_binary = sys.argv[1]
 
 skip_suites = [
     'names',
@@ -107,7 +112,8 @@ def run_suite(name, test_suite, test_binaries):
         counts['total'] += 1
 
         if name in skip_suites:
-            print(PREFIX_WARN + " " + line_str + "Skipping test due to exclude " + name)
+            if not hide_warnings:
+                print(PREFIX_WARN + " " + line_str + "Skipping test due to exclude " + name)
             counts['skipped'] += 1
             continue
 
@@ -133,22 +139,24 @@ def run_suite(name, test_suite, test_binaries):
                                                                    action['args']) + ": expected=" + stringify_result(
                         command) + ", actual=" + result + ". Command: \"" + " ".join(run_cmd) + "\"")
             else:
-                print(PREFIX_WARN + " " + line_str + "Skipping test with action type " + action[
-                    'type'] + "(" + action.__str__() + ")" + bcolors.ENDC)
+                if not hide_warnings:
+                    print(PREFIX_WARN + " " + line_str + "Skipping test with action type " + action[
+                        'type'] + "(" + action.__str__() + ")" + bcolors.ENDC)
                 counts['skipped'] += 1
 
             continue
 
-        print(PREFIX_WARN + " " + line_str + "Skipping test with command type " + command[
-            'type'] + " (" + command.__str__() + ")" + bcolors.ENDC)
+        if not hide_warnings:
+            print(PREFIX_WARN + " " + line_str + "Skipping test with command type " + command[
+                'type'] + " (" + command.__str__() + ")" + bcolors.ENDC)
         counts['skipped'] += 1
 
 
 def main():
     included_modules = []
 
-    if len(sys.argv) == 2:
-        included_modules = sys.argv[1].split(",")
+    if len(sys.argv) == 3:
+        included_modules = sys.argv[2].split(",")
 
     for wast_file in glob.glob(test_dir + "*.wast"):
         suite_name = pathlib.Path(wast_file).stem
