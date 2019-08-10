@@ -84,7 +84,12 @@ int main(int argc, char *argv[]) {
         exit(EXIT_FAILURE);
     }
 
-    module_t *module = parse(input, parse_error);
+    module_t *module = NULL;
+    exception_t ex = parse(input, &module);
+    if (ex > 0) {
+        fprintf(stderr, "error parsing file: %s\n", exception_code_to_string(ex));
+        exit(1);
+    }
     fclose(input);
 
     eval_state_t *interpreter = create_interpreter();

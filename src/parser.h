@@ -3,9 +3,10 @@
 
 #include "stdio.h"
 #include "module.h"
+#include "exception.h"
 
 typedef void (*parse_error_f)(char *msg);
 
-module_t *parse(FILE *input, parse_error_f parse_error);
+exception_t parse(FILE *input_file, module_t **module);
 
 #endif // PARSER_H

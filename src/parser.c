@@ -3,14 +3,12 @@
 #include "type.h"
 #include "value.h"
 #include "instruction.h"
-#include "module.h"
 #include "stdlib.h"
 #include "string.h"
 #include "strings.h"
 
 typedef struct parser_state {
     FILE *input;
-    parse_error_f parse_error;
 } parser_state_t;
 
 #define MAKE_NEXT_VEC(name, generator_func) \
@@ -23,18 +21,18 @@ static inline CAT(CAT(vec_, name), _t) *CAT(CAT(next_, name), _vec)(parser_state
     return vec; \
 }
 
-static byte next_byte(parser_state_t *state) {
+static inline byte next_byte(parser_state_t *state) {
     int value = fgetc(state->input);
     if (value == EOF) {
-        state->parse_error("reached eof while parsing");
+        THROW_EXCEPTION(EXCEPTION_PARSER_EOF_BEFORE_FINISHED);
     }
     return value;
 }
 
-static byte peek_byte(parser_state_t *state) {
+static inline byte peek_byte(parser_state_t *state) {
     int value = fgetc(state->input);
     if (value == EOF) {
-        state->parse_error("reached eof while parsing");
+        THROW_EXCEPTION(EXCEPTION_PARSER_EOF_BEFORE_FINISHED);
     }
     ungetc(value, state->input);
     return value;
@@ -61,7 +59,7 @@ static inline uint64_t read_LEB(parser_state_t *state, uint32_t maxbits, bool si
         }
         bcnt += 1;
         if (bcnt > (maxbits + 7 - 1) / 7) {
-            state->parse_error("leb overflow");
+            THROW_EXCEPTION(EXCEPTION_PARSER_LEB_OVERFLOW);
         }
     }
     if (sign && (shift < maxbits) && (byte & 0x40)) {
@@ -186,8 +184,7 @@ static inline valtype_t next_valtype(parser_state_t *state) {
         case 0x7C:
             return VALTYPE_F64;
         default:
-            state->parse_error("unexpected valtype");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNEXPECTED_VALTYPE);
     }
 }
 
@@ -258,7 +255,7 @@ static inline instruction_t next_instruction(parser_state_t *state) {
             break;
         case OP_CALL_INDIRECT:
             instruction.typeidx = next_typeidx(state);
-            if (next_byte(state) != 0x00) state->parse_error("invalid tableidx for call indirect");
+            if (next_byte(state) != 0x00) THROW_EXCEPTION(EXCEPTION_PARSER_INVALID_TYPEIDX_FOR_CALL_INDIRECT);
             break;
         case OP_LOCAL_GET:
         case OP_LOCAL_SET:
@@ -295,10 +292,10 @@ static inline instruction_t next_instruction(parser_state_t *state) {
             instruction.memarg = next_memarg(state);
             break;
         case OP_MEMORY_SIZE:
-            if (next_byte(state) != 0x00) state->parse_error("unknown index for memory.size");
+            if (next_byte(state) != 0x00) THROW_EXCEPTION(EXCEPTION_PARSER_MEMORY_INDEX_NOT_ZERO);
             break;
         case OP_MEMORY_GROW:
-            if (next_byte(state) != 0x00) state->parse_error("unknown index for memory.grow");
+            if (next_byte(state) != 0x00) THROW_EXCEPTION(EXCEPTION_PARSER_MEMORY_INDEX_NOT_ZERO);
             break;
         case OP_I32_CONST:
             instruction.const_i32 = next_i32(state);
@@ -442,8 +439,7 @@ static inline instruction_t next_instruction(parser_state_t *state) {
         case OP_F64_REINTERPRET_I64:
             break;
         default:
-            state->parse_error("unknown opcode");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_OPCODE);
     }
     return instruction;
 }
@@ -471,8 +467,7 @@ static inline limits_t next_limit(parser_state_t *state) {
             limits.max = next_u32(state);
             break;
         default:
-            state->parse_error("unknown limit type");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_LIMIT_TYPE);
     }
     return limits;
 }
@@ -480,7 +475,7 @@ static inline limits_t next_limit(parser_state_t *state) {
 static inline functype_t next_functype(parser_state_t *state) {
     functype_t functype;
     byte opcode = next_byte(state);
-    if (opcode != 0x60) state->parse_error("expected opcode 0x60");
+    if (opcode != 0x60) THROW_EXCEPTION(EXCEPTION_PARSER_UNEXPECTED_OPCODE);
     functype.t1 = next_valtype_vec(state);
     functype.t2 = next_valtype_vec(state);
     return functype;
@@ -496,7 +491,7 @@ static type_section_t next_type_section(parser_state_t *state) {
 
 static inline tabletype_t next_tabletype(parser_state_t *state) {
     tabletype_t tabletype;
-    if (next_byte(state) != 0x70) state->parse_error("unknown elemtype");
+    if (next_byte(state) != 0x70) THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_ELEMENT_TYPE);
     tabletype.lim = next_limit(state);
     return tabletype;
 }
@@ -510,8 +505,7 @@ static inline mutability_t next_mutability(parser_state_t *state) {
         case 0x01:
             return MUTABILITY_VAR;
         default:
-            state->parse_error("unknown mutability type");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_MUTABILITY_TYPE);
     }
 }
 
@@ -550,8 +544,7 @@ static inline import_t next_import(parser_state_t *state) {
             import.global = next_globaltype(state);
             break;
         default:
-            state->parse_error("unknown importdesc type");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_IMPORTDESC_TYPE);
     }
     return import;
 }
@@ -616,8 +609,7 @@ static inline export_t next_export(parser_state_t *state) {
             export.global = next_globalidx(state);
             break;
         default:
-            state->parse_error("unknown exportdesc type");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_EXPORTDESC_TYPE);
     }
     return export;
 }
@@ -697,7 +689,7 @@ static section_t next_section(parser_state_t *state) {
     section_t section;
 
     byte id = next_byte(state);
-    if (id > 11) state->parse_error("invalid section id");
+    if (id > 11) THROW_EXCEPTION(EXCEPTION_PARSER_INVALID_SECTION_ID);
     section.id = id;
 
     u32 size = next_u32(state);
@@ -741,8 +733,7 @@ static section_t next_section(parser_state_t *state) {
             section.data_section = next_data_section(state);
             break;
         default:
-            state->parse_error("unknown section type");
-            __builtin_unreachable();
+            THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_SECTION_TYPE);
     }
     return section;
 }
@@ -788,79 +779,78 @@ static void handle_imports(module_t *module, parse_error_f parse_error) {
     }
 }
 
-module_t *parse(FILE *input_file, parse_error_f parse_error) {
-    parser_state_t state;
-    state.input = input_file;
-    state.parse_error = parse_error;
+exception_t parse(FILE *input_file, module_t **module) {
+    TRY_CATCH(
+            parser_state_t state;
+            state.input = input_file;
 
-    module_t *module = calloc(1, sizeof(module_t));
+            *module = calloc(1, sizeof(module_t));
 
-    // Check magic value of module.
-    if (next_byte(&state) != 0x00 || next_byte(&state) != 0x61 || next_byte(&state) != 0x73 ||
-        next_byte(&state) != 0x6D) {
-        parse_error("unknown magic value");
-    }
+            // Check magic value of module.
+            if (next_byte(&state) != 0x00 || next_byte(&state) != 0x61 || next_byte(&state) != 0x73 ||
+                next_byte(&state) != 0x6D) {
+                THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_MAGIC_VALUE);
+            }
 
-    // Check version number of module.
-    if (next_byte(&state) != 0x01 || next_byte(&state) != 0x00 || next_byte(&state) != 0x00 ||
-        next_byte(&state) != 0x00) {
-        parse_error("unknown version number");
-    }
+            // Check version number of module.
+            if (next_byte(&state) != 0x01 || next_byte(&state) != 0x00 || next_byte(&state) != 0x00 ||
+                next_byte(&state) != 0x00) {
+                THROW_EXCEPTION(EXCEPTION_PARSER_VERSION_NOT_SUPPORTED);
+            }
 
-    function_section_t function_section;
+            function_section_t function_section;
 
-    while (1) {
-        int next = fgetc(state.input);
-        if (next == EOF) break;
-        ungetc(next, state.input);
+            while (1) {
+                int next = fgetc(state.input);
+                if (next == EOF) break;
+                ungetc(next, state.input);
 
-        section_t section = next_section(&state);
+                section_t section = next_section(&state);
 
-        switch (section.id) {
-            case SECTION_TYPE_TYPE:
-                module->types = section.type_section.types;
-                break;
-            case SECTION_TYPE_CUSTOM: // Ignore.
-                break;
-            case SECTION_TYPE_IMPORT:
-                module->imports = section.import_section.imports;
-                break;
-            case SECTION_TYPE_FUNCTION:
-                function_section = section.function_section;
-                break;
-            case SECTION_TYPE_TABLE:
-                module->tables = section.table_section.tables;
-                break;
-            case SECTION_TYPE_MEMORY:
-                module->mems = section.memory_section.memories;
-                break;
-            case SECTION_TYPE_GLOBAL:
-                module->globals = section.global_section.globals;
-                break;
-            case SECTION_TYPE_EXPORT:
-                module->exports = section.export_section.exports;
-                break;
-            case SECTION_TYPE_START:
-                module->has_start = true;
-                module->start = section.start_section.start;
-                break;
-            case SECTION_TYPE_ELEMENT:
-                module->elem = section.element_section.elements;
-                break;
-            case SECTION_TYPE_CODE:
-                module->funcs = section.code_section.funcs;
-                break;
-            case SECTION_TYPE_DATA:
-                module->data = section.data_section.datas;
-                break;
-        }
-    }
+                switch (section.id) {
+                    case SECTION_TYPE_TYPE:
+                        (*module)->types = section.type_section.types;
+                        break;
+                    case SECTION_TYPE_CUSTOM: // Ignore.
+                        break;
+                    case SECTION_TYPE_IMPORT:
+                        (*module)->imports = section.import_section.imports;
+                        break;
+                    case SECTION_TYPE_FUNCTION:
+                        function_section = section.function_section;
+                        break;
+                    case SECTION_TYPE_TABLE:
+                        (*module)->tables = section.table_section.tables;
+                        break;
+                    case SECTION_TYPE_MEMORY:
+                        (*module)->mems = section.memory_section.memories;
+                        break;
+                    case SECTION_TYPE_GLOBAL:
+                        (*module)->globals = section.global_section.globals;
+                        break;
+                    case SECTION_TYPE_EXPORT:
+                        (*module)->exports = section.export_section.exports;
+                        break;
+                    case SECTION_TYPE_START:
+                        (*module)->has_start = true;
+                        (*module)->start = section.start_section.start;
+                        break;
+                    case SECTION_TYPE_ELEMENT:
+                        (*module)->elem = section.element_section.elements;
+                        break;
+                    case SECTION_TYPE_CODE:
+                        (*module)->funcs = section.code_section.funcs;
+                        break;
+                    case SECTION_TYPE_DATA:
+                        (*module)->data = section.data_section.datas;
+                        break;
+                }
+            }
 
-    for (u32 i = 0; i < vec_typeidx_length(function_section.functions); i++) {
-        vec_func_getp(module->funcs, i)->type = vec_typeidx_get(function_section.functions, i);
-    }
-
-//    handle_imports(module, parse_error);
-
-    return module;
+            for (u32 i = 0; i < vec_typeidx_length(function_section.functions); i++) {
+                vec_func_getp((*module)->funcs, i)->type = vec_typeidx_get(function_section.functions, i);
+            }
+            return NO_EXCEPTION;,
+            return exception;
+    )
 }
