@@ -26,7 +26,7 @@ void free_memory(memory_t *m) {
     free(m);
 }
 
-void init_memory(eval_state_t *eval_state, memtype_t mem) {
+void init_memory(eval_state_t SILENCE_UNUSED *eval_state, memtype_t mem) {
     if (memory == NULL) {
         THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NO_MEMORY, "this module needs memory");
     }

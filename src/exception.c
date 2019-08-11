@@ -4,7 +4,7 @@
 jmp_buf _exception_jump_buf;
 volatile _exception_data_t _exception_data = {
         .active = false,
-        .code = 0,
+        .code = NO_EXCEPTION,
         .file = "",
         .function = "",
         .line = 0,

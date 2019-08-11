@@ -4,7 +4,7 @@
 #include <assert.h>
 #include "instruction.h"
 
-static const char *opcode2str(opcode_t opcode) {
+static SILENCE_UNUSED const char *opcode2str(opcode_t opcode) {
     switch (opcode) {
         case OP_UNREACHABLE:
             return "unreachable";

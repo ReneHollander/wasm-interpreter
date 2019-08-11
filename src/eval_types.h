@@ -89,7 +89,7 @@ typedef struct eval_state {
     module_t *module;  /* Pointer to current module */
 } eval_state_t;
 
-static inline frame_t *peek_func_frame(vec_frame_t *vec) {
+static SILENCE_UNUSED frame_t *peek_func_frame(vec_frame_t *vec) {
     vec_frame_iterator_t it = vec_frame_iterator(vec, IT_BACKWARDS);
     while (vec_frame_has_next(&it)) {
         frame_t *frame = vec_frame_nextp(&it);

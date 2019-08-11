@@ -12,16 +12,16 @@ typedef struct parser_state {
 } parser_state_t;
 
 #define MAKE_NEXT_VEC(name, generator_func) \
-static inline CAT(CAT(vec_, name), _t) *CAT(CAT(next_, name), _vec)(parser_state_t *state) { \
+static CAT(CAT(vec_, name), _t) *CAT(CAT(next_, name), _vec)(parser_state_t *state) { \
     u32 n = next_u32(state); \
     CAT(CAT(vec_, name), _t) *vec = CAT(CAT(vec_, name), _create)(); \
-    for (int i = 0; i < n; i++) { \
+    for (u32 i = 0; i < n; i++) { \
         CAT(CAT(vec_, name), _add)(vec, generator_func(state)); \
     } \
     return vec; \
 }
 
-static inline byte next_byte(parser_state_t *state) {
+static byte next_byte(parser_state_t *state) {
     int value = fgetc(state->input);
     if (value == EOF) {
         THROW_EXCEPTION(EXCEPTION_PARSER_EOF_BEFORE_FINISHED);
@@ -29,7 +29,7 @@ static inline byte next_byte(parser_state_t *state) {
     return value;
 }
 
-static inline byte peek_byte(parser_state_t *state) {
+static byte peek_byte(parser_state_t *state) {
     int value = fgetc(state->input);
     if (value == EOF) {
         THROW_EXCEPTION(EXCEPTION_PARSER_EOF_BEFORE_FINISHED);
@@ -44,7 +44,7 @@ static void advance(parser_state_t *state, u32 count) {
     }
 }
 
-static inline uint64_t read_LEB(parser_state_t *state, uint32_t maxbits, bool sign) {
+static uint64_t read_LEB(parser_state_t *state, uint32_t maxbits, bool sign) {
     uint64_t result = 0;
     uint32_t shift = 0;
     uint32_t bcnt = 0;
@@ -69,27 +69,27 @@ static inline uint64_t read_LEB(parser_state_t *state, uint32_t maxbits, bool si
     return result;
 }
 
-static inline u32 next_u32(parser_state_t *state) {
+static u32 next_u32(parser_state_t *state) {
     return read_LEB(state, 32, false);
 }
 
-static inline s32 next_s32(parser_state_t *state) {
+static s32 next_s32(parser_state_t *state) {
     return read_LEB(state, 32, true);
 }
 
-static inline s64 next_s64(parser_state_t *state) {
+static s64 next_s64(parser_state_t *state) {
     return read_LEB(state, 64, true);
 }
 
-static inline i32 next_i32(parser_state_t *state) {
+static i32 next_i32(parser_state_t *state) {
     return next_s32(state);
 }
 
-static inline i64 next_i64(parser_state_t *state) {
+static i64 next_i64(parser_state_t *state) {
     return next_s64(state);
 }
 
-static inline f32 next_f32(parser_state_t *state) {
+static f32 next_f32(parser_state_t *state) {
     f32 output;
     *((byte *) (&output) + 0) = next_byte(state);
     *((byte *) (&output) + 1) = next_byte(state);
@@ -98,7 +98,7 @@ static inline f32 next_f32(parser_state_t *state) {
     return output;
 }
 
-static inline f64 next_f64(parser_state_t *state) {
+static f64 next_f64(parser_state_t *state) {
     f64 output;
     *((byte *) (&output) + 0) = next_byte(state);
     *((byte *) (&output) + 1) = next_byte(state);
@@ -111,31 +111,31 @@ static inline f64 next_f64(parser_state_t *state) {
     return output;
 }
 
-static inline typeidx next_typeidx(parser_state_t *state) {
+static typeidx next_typeidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-static inline funcidx next_funcidx(parser_state_t *state) {
+static funcidx next_funcidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-static inline tableidx next_tableidx(parser_state_t *state) {
+static tableidx next_tableidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-static inline memidx next_memidx(parser_state_t *state) {
+static memidx next_memidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-static inline globalidx next_globalidx(parser_state_t *state) {
+static globalidx next_globalidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-static inline localidx next_localidx(parser_state_t *state) {
+static localidx next_localidx(parser_state_t *state) {
     return next_u32(state);
 }
 
-static inline labelidx next_labelidx(parser_state_t *state) {
+static labelidx next_labelidx(parser_state_t *state) {
     return next_u32(state);
 }
 
@@ -147,7 +147,7 @@ MAKE_NEXT_VEC(funcidx, next_funcidx)
 
 MAKE_NEXT_VEC(labelidx, next_labelidx)
 
-static inline name next_name(parser_state_t *state) {
+static name next_name(parser_state_t *state) {
     // TODO: Should not use internal vec API.
     vec_byte_t *vec = next_byte_vec(state);
     name name = malloc(sizeof(char) * (vec->_length + 1));
@@ -157,23 +157,23 @@ static inline name next_name(parser_state_t *state) {
     return name;
 }
 
-static inline instruction_t next_instruction(parser_state_t *state);
+static instruction_t next_instruction(parser_state_t *state);
 
-static inline memarg_t next_memarg(parser_state_t *state) {
+static memarg_t next_memarg(parser_state_t *state) {
     memarg_t memarg;
     memarg.align = next_u32(state);
     memarg.offset = next_u32(state);
     return memarg;
 }
 
-static inline insn_br_table_t next_insn_br_table(parser_state_t *state) {
+static insn_br_table_t next_insn_br_table(parser_state_t *state) {
     insn_br_table_t table;
     table.labels = next_labelidx_vec(state);
     table.default_label = next_labelidx(state);
     return table;
 }
 
-static inline valtype_t next_valtype(parser_state_t *state) {
+static valtype_t next_valtype(parser_state_t *state) {
     switch (next_byte(state)) {
         case 0x7F:
             return VALTYPE_I32;
@@ -190,7 +190,7 @@ static inline valtype_t next_valtype(parser_state_t *state) {
 
 MAKE_NEXT_VEC(valtype, next_valtype)
 
-static inline blocktype_t next_blocktype(parser_state_t *state) {
+static blocktype_t next_blocktype(parser_state_t *state) {
     blocktype_t blocktype;
     if (peek_byte(state) == 0x40) {
         next_byte(state);
@@ -201,7 +201,7 @@ static inline blocktype_t next_blocktype(parser_state_t *state) {
     return blocktype;
 }
 
-static inline insn_block_t next_insn_block(parser_state_t *state) {
+static insn_block_t next_insn_block(parser_state_t *state) {
     insn_block_t block;
     block.resulttype = next_blocktype(state);
     block.instructions = vec_instruction_create();
@@ -212,7 +212,7 @@ static inline insn_block_t next_insn_block(parser_state_t *state) {
     return block;
 }
 
-static inline insn_if_t next_insn_if(parser_state_t *state) {
+static insn_if_t next_insn_if(parser_state_t *state) {
     insn_if_t if_block;
     if_block.resulttype = next_blocktype(state);
     if_block.ifpath = vec_instruction_create();
@@ -232,7 +232,7 @@ static inline insn_if_t next_insn_if(parser_state_t *state) {
     return if_block;
 }
 
-static inline instruction_t next_instruction(parser_state_t *state) {
+static instruction_t next_instruction(parser_state_t *state) {
     instruction_t instruction;
     instruction.opcode = next_byte(state);
     switch (instruction.opcode) {
@@ -454,7 +454,7 @@ expression_t next_expression(parser_state_t *state) {
     return expression;
 }
 
-static inline limits_t next_limit(parser_state_t *state) {
+static limits_t next_limit(parser_state_t *state) {
     limits_t limits;
     switch (next_byte(state)) {
         case 0x00:
@@ -472,7 +472,7 @@ static inline limits_t next_limit(parser_state_t *state) {
     return limits;
 }
 
-static inline functype_t next_functype(parser_state_t *state) {
+static functype_t next_functype(parser_state_t *state) {
     functype_t functype;
     byte opcode = next_byte(state);
     if (opcode != 0x60) THROW_EXCEPTION(EXCEPTION_PARSER_UNEXPECTED_OPCODE);
@@ -489,7 +489,7 @@ static type_section_t next_type_section(parser_state_t *state) {
     return type_section;
 }
 
-static inline tabletype_t next_tabletype(parser_state_t *state) {
+static tabletype_t next_tabletype(parser_state_t *state) {
     tabletype_t tabletype;
     if (next_byte(state) != 0x70) THROW_EXCEPTION(EXCEPTION_PARSER_UNKNOWN_ELEMENT_TYPE);
     tabletype.lim = next_limit(state);
@@ -498,7 +498,7 @@ static inline tabletype_t next_tabletype(parser_state_t *state) {
 
 MAKE_NEXT_VEC(tabletype, next_tabletype)
 
-static inline mutability_t next_mutability(parser_state_t *state) {
+static mutability_t next_mutability(parser_state_t *state) {
     switch (next_byte(state)) {
         case 0x00:
             return MUTABILITY_CONST;
@@ -509,14 +509,14 @@ static inline mutability_t next_mutability(parser_state_t *state) {
     }
 }
 
-static inline globaltype_t next_globaltype(parser_state_t *state) {
+static globaltype_t next_globaltype(parser_state_t *state) {
     globaltype_t globaltype;
     globaltype.t = next_valtype(state);
     globaltype.m = next_mutability(state);
     return globaltype;
 }
 
-static inline memtype_t next_memtype(parser_state_t *state) {
+static memtype_t next_memtype(parser_state_t *state) {
     memtype_t memtype;
     memtype.lim = next_limit(state);
     return memtype;
@@ -524,7 +524,7 @@ static inline memtype_t next_memtype(parser_state_t *state) {
 
 MAKE_NEXT_VEC(memtype, next_memtype)
 
-static inline import_t next_import(parser_state_t *state) {
+static import_t next_import(parser_state_t *state) {
     import_t import;
     import.module = next_name(state);
     import.name = next_name(state);
@@ -575,7 +575,7 @@ static memory_section_t next_memory_section(parser_state_t *state) {
     return memory_section;
 }
 
-static inline global_t next_global(parser_state_t *state) {
+static global_t next_global(parser_state_t *state) {
     global_t global;
     global.gt = next_globaltype(state);
     global.e = next_expression(state);
@@ -590,7 +590,7 @@ static global_section_t next_global_section(parser_state_t *state) {
     return global_section;
 }
 
-static inline export_t next_export(parser_state_t *state) {
+static export_t next_export(parser_state_t *state) {
     export_t export;
     export.name = next_name(state);
     export.desc = next_byte(state);
@@ -628,7 +628,7 @@ static start_section_t next_start_section(parser_state_t *state) {
     return start_section;
 }
 
-static inline element_t next_element(parser_state_t *state) {
+static element_t next_element(parser_state_t *state) {
     element_t element;
     element.table = next_tableidx(state);
     element.offset = next_expression(state);
@@ -644,7 +644,7 @@ static element_section_t next_element_section(parser_state_t *state) {
     return element_section;
 }
 
-static inline locals_t next_locals(parser_state_t *state) {
+static locals_t next_locals(parser_state_t *state) {
     locals_t locals;
     locals.n = next_u32(state);
     locals.t = next_valtype(state);
@@ -653,9 +653,9 @@ static inline locals_t next_locals(parser_state_t *state) {
 
 MAKE_NEXT_VEC(locals, next_locals)
 
-static inline func_t next_func(parser_state_t *state) {
-    func_t func;
-    u32 size = next_u32(state);
+static func_t next_func(parser_state_t *state) {
+    func_t func = {0};
+    next_u32(state); // Consume size.
     func.locals = next_locals_vec(state);
     func.expression = next_expression(state);
     return func;
@@ -669,7 +669,7 @@ static code_section_t next_code_section(parser_state_t *state) {
     return code_section;
 }
 
-static inline data_t next_data(parser_state_t *state) {
+static data_t next_data(parser_state_t *state) {
     data_t data;
     data.memidx = next_memidx(state);
     data.expression = next_expression(state);
@@ -738,46 +738,47 @@ static section_t next_section(parser_state_t *state) {
     return section;
 }
 
-static void handle_imports(module_t *module, parse_error_f parse_error) {
-    if (module->imports != NULL) {
-        uint32_t func_count = 0;
-        uint32_t global_count = 0;
-
-        vec_import_iterator_t it = vec_import_iterator(module->imports, IT_FORWARDS);
-        while (vec_import_has_next(&it)) {
-            import_t *import = vec_import_nextp(&it);
-            if (import->desc == IMPORTDESC_FUNC) {
-                func_count++;
-            } else if (import->desc == IMPORTDESC_TABLE) {
-                //do nothing for now
-            } else if (import->desc == IMPORTDESC_GLOBAL) {
-                global_count++;
-            } else if (import->desc == IMPORTDESC_MEM) {
-                //do nothing for now
-            } else {
-                parse_error("unknown import desc");
-            }
-        }
-        // TODO: figure this out.
-//        func_count += vec_func_length(module->funcs);
-//        module->funcs = realloc(module->funcs, sizeof(vec_func_t) + (sizeof(func_t) * func_count));
+// TODO: Implement correct module linking.
+//static void handle_imports(module_t *module, parse_error_f parse_error) {
+//    if (module->imports != NULL) {
+//        uint32_t func_count = 0;
+//        uint32_t global_count = 0;
 //
-//        for (int i = func_count - 1; i >= 0; i--) {
-//            if (i - module->funcs->length >= 0) {
-//                module->funcs->values[i] = module->funcs->values[i - module->funcs->length];
+//        vec_import_iterator_t it = vec_import_iterator(module->imports, IT_FORWARDS);
+//        while (vec_import_has_next(&it)) {
+//            import_t *import = vec_import_nextp(&it);
+//            if (import->desc == IMPORTDESC_FUNC) {
+//                func_count++;
+//            } else if (import->desc == IMPORTDESC_TABLE) {
+//                //do nothing for now
+//            } else if (import->desc == IMPORTDESC_GLOBAL) {
+//                global_count++;
+//            } else if (import->desc == IMPORTDESC_MEM) {
+//                //do nothing for now
+//            } else {
+//                parse_error("unknown import desc");
 //            }
 //        }
-//
-//        global_count += module->globals->length;
-//        module->globals = realloc(module->globals, sizeof(vec_global_t) + sizeof(globaltype_t) * global_count);
-//
-//        for (int i = global_count - 1; i >= 0; i--) {
-//            if (i - module->globals->length >= 0) {
-//                module->globals->values[i] = module->globals->values[i - module->globals->length];
-//            }
-//        }
-    }
-}
+//        // TODO: figure this out.
+////        func_count += vec_func_length(module->funcs);
+////        module->funcs = realloc(module->funcs, sizeof(vec_func_t) + (sizeof(func_t) * func_count));
+////
+////        for (int i = func_count - 1; i >= 0; i--) {
+////            if (i - module->funcs->length >= 0) {
+////                module->funcs->values[i] = module->funcs->values[i - module->funcs->length];
+////            }
+////        }
+////
+////        global_count += module->globals->length;
+////        module->globals = realloc(module->globals, sizeof(vec_global_t) + sizeof(globaltype_t) * global_count);
+////
+////        for (int i = global_count - 1; i >= 0; i--) {
+////            if (i - module->globals->length >= 0) {
+////                module->globals->values[i] = module->globals->values[i - module->globals->length];
+////            }
+////        }
+//    }
+//}
 
 static void _parse(FILE *input_file, module_t **module) {
     parser_state_t state;
@@ -797,7 +798,7 @@ static void _parse(FILE *input_file, module_t **module) {
         THROW_EXCEPTION(EXCEPTION_PARSER_VERSION_NOT_SUPPORTED);
     }
 
-    function_section_t function_section;
+    function_section_t function_section = {0};
 
     while (1) {
         int next = fgetc(state.input);

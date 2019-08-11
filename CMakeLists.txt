@@ -2,7 +2,8 @@ cmake_minimum_required(VERSION 3.14)
 
 project(wasm_interpreter C)
 
-set(CMAKE_C_FLAGS_RELEASE "-O3 -flto")
+set(CMAKE_C_FLAGS "-Wall -Wextra -pedantic")
+set(CMAKE_C_FLAGS_RELEASE "-g -O3")
 
 set(CMAKE_C_FLAGS_ASAN "-g -fsanitize=address -fno-omit-frame-pointer -fno-optimize-sibling-calls")
 set(CMAKE_EXE_LINKER_FLAGS_ASAN "-fsanitize=address")

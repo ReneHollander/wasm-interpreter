@@ -11,7 +11,7 @@
 #include "util.h"
 #include "strings.h"
 
-static inline i32 calculate_address(eval_state_t *eval_state, instruction_t *instr, i32 bit_width) {
+static i32 calculate_address(eval_state_t *eval_state, instruction_t *instr, i32 bit_width) {
     i32 a = pop_i32(eval_state->opd_stack);
     i32 ea = a + instr->memarg.offset;
     if ((ea + bit_width / 8) > (get_current_memory()->size * PAGE_SIZE)) {

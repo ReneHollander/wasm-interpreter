@@ -16,7 +16,7 @@ typedef enum direction {
     IT_BACKWARDS,
 } direction_t;
 
-#define VEC_ERROR(args...) THROW_EXCEPTION_WITH_MSG(EXCEPTION_VECTOR_EXCEPTION, args)
+#define VEC_ERROR(...) THROW_EXCEPTION_WITH_MSG(EXCEPTION_VECTOR_EXCEPTION, __VA_ARGS__)
 
 #define CREATE_VEC_(type, name, fn_prefix, vec_type, it_type) \
 typedef struct CAT(vec_, name) { \
@@ -29,8 +29,8 @@ typedef struct CAT(CAT(vec_, name), _iterator) { \
     u32 _idx; \
     s32 _dir; \
 } it_type; \
-static type CAT(empty_, type) = {0}; \
-static inline vec_type* CAT(fn_prefix, _create)() { \
+static SILENCE_UNUSED type CAT(empty_, type); \
+static SILENCE_UNUSED vec_type* CAT(fn_prefix, _create)() { \
     vec_type* vec = calloc(1, sizeof(vec_type)); \
     if (vec == NULL) VEC_ERROR("calloc failed"); \
     vec->_length = 0; \
@@ -38,20 +38,20 @@ static inline vec_type* CAT(fn_prefix, _create)() { \
     vec->_elements = NULL; \
     return vec; \
 } \
-static inline void CAT(fn_prefix, _free)(vec_type* vec) { \
+static SILENCE_UNUSED void CAT(fn_prefix, _free)(vec_type* vec) { \
     if (vec == NULL) return; \
     free(vec->_elements); \
     free(vec); \
 } \
-static inline u32 CAT(fn_prefix, _length)(const vec_type* vec) { \
+static SILENCE_UNUSED u32 CAT(fn_prefix, _length)(const vec_type* vec) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     return vec->_length; \
 } \
-static inline bool CAT(fn_prefix, _empty)(const vec_type* vec) { \
+static SILENCE_UNUSED bool CAT(fn_prefix, _empty)(const vec_type* vec) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     return vec->_length == 0; \
 } \
-static inline void CAT(fn_prefix, _resize)(vec_type* vec, u32 new_length) { \
+static SILENCE_UNUSED void CAT(fn_prefix, _resize)(vec_type* vec, u32 new_length) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (new_length == vec->_length) return; \
     if (new_length <= vec->_capacity) { \
@@ -69,65 +69,63 @@ static inline void CAT(fn_prefix, _resize)(vec_type* vec, u32 new_length) { \
         return; \
     } \
 } \
-static inline type* CAT(fn_prefix, _add)(vec_type* vec, type element) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _add)(vec_type* vec, type element) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     CAT(fn_prefix, _resize)(vec, vec->_length + 1); \
     vec->_elements[vec->_length - 1] = element; \
     return &vec->_elements[vec->_length - 1]; \
 } \
-static inline type* CAT(fn_prefix, _push)(vec_type* vec, type element) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _push)(vec_type* vec, type element) { \
     return CAT(fn_prefix, _add)(vec, element); \
 } \
-static inline type CAT(fn_prefix, _get)(const vec_type* vec, u32 idx) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _get)(const vec_type* vec, u32 idx) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0 || idx >= vec->_length) VEC_ERROR("index %d not in bounds", idx); \
+    if (idx >= vec->_length) VEC_ERROR("index %d not in bounds", idx); \
     return vec->_elements[idx]; \
 }\
-static inline type CAT(fn_prefix, _get_or)(const vec_type* vec, u32 idx, type def) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _get_or)(const vec_type* vec, u32 idx, type def) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0 || idx >= vec->_length) return def; \
+    if (idx >= vec->_length) return def; \
     return vec->_elements[idx]; \
 }\
-static inline type* CAT(fn_prefix, _getp)(const vec_type* vec, u32 idx) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _getp)(const vec_type* vec, u32 idx) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0 || idx >= vec->_length) VEC_ERROR("index %d not in bounds", idx); \
+    if (idx >= vec->_length) VEC_ERROR("index %d not in bounds", idx); \
     return &vec->_elements[idx]; \
 }\
-static inline type* CAT(fn_prefix, _getp_or)(const vec_type* vec, u32 idx, type* def) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _getp_or)(const vec_type* vec, u32 idx, type* def) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0 || idx >= vec->_length) return def; \
+    if (idx >= vec->_length) return def; \
     return &vec->_elements[idx]; \
 }\
-static inline type CAT(fn_prefix, _peek)(const vec_type* vec) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _peek)(const vec_type* vec) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (vec->_length == 0) VEC_ERROR("vec is empty"); \
     return vec->_elements[vec->_length - 1]; \
 }\
-static inline type CAT(fn_prefix, _peek_or)(const vec_type* vec, type def) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _peek_or)(const vec_type* vec, type def) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (vec->_length == 0) return def; \
     return vec->_elements[vec->_length - 1]; \
 }\
-static inline type* CAT(fn_prefix, _peekp)(const vec_type* vec) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _peekp)(const vec_type* vec) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (vec->_length == 0) VEC_ERROR("vec is empty"); \
     return &vec->_elements[vec->_length - 1]; \
 }\
-static inline type* CAT(fn_prefix, _peekp_or)(const vec_type* vec, type* def) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _peekp_or)(const vec_type* vec, type* def) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (vec->_length == 0) return def; \
     return &vec->_elements[vec->_length - 1]; \
 }\
-static inline type* CAT(fn_prefix, _set)(vec_type* vec, u32 idx, type element) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _set)(vec_type* vec, u32 idx, type element) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0) VEC_ERROR("index %d is not positive", idx); \
     CAT(fn_prefix, _resize)(vec, fmax(vec->_length, idx + 1)); \
     vec->_elements[idx] = element; \
     return &vec->_elements[idx]; \
 }\
-static inline type* CAT(fn_prefix, _insert)(vec_type* vec, u32 idx, type element) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _insert)(vec_type* vec, u32 idx, type element) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0) VEC_ERROR("index %d is not positive", idx); \
     CAT(fn_prefix, _resize)(vec, fmax(vec->_length + 1, idx + 1)); \
     for (u32 i = vec->_length - 1; i > idx; i--) { \
         vec->_elements[i] = vec->_elements[i - 1]; \
@@ -135,27 +133,27 @@ static inline type* CAT(fn_prefix, _insert)(vec_type* vec, u32 idx, type element
     vec->_elements[idx] = element; \
     return &vec->_elements[idx]; \
 }\
-static inline type CAT(fn_prefix, _remove)(vec_type* vec, u32 idx) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _remove)(vec_type* vec, u32 idx) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
-    if (idx < 0 || idx >= vec->_length) VEC_ERROR("index %d not in bounds", idx); \
+    if (idx >= vec->_length) VEC_ERROR("index %d not in bounds", idx); \
     type r = vec->_elements[idx]; \
     memmove(vec->_elements + idx, vec->_elements + idx + 1, (vec->_length - idx - 1) * sizeof(type)); \
     CAT(fn_prefix, _resize)(vec, vec->_length - 1); \
     return r; \
 } \
-static inline type CAT(fn_prefix, _pop)(vec_type* vec) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _pop)(vec_type* vec) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (vec->_length == 0) VEC_ERROR("vec is empty"); \
     CAT(fn_prefix, _resize)(vec, vec->_length - 1); \
     return vec->_elements[vec->_length]; \
 } \
-static inline type CAT(fn_prefix, _pop_or)(vec_type* vec, type def) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _pop_or)(vec_type* vec, type def) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     if (vec->_length == 0) return def; \
     CAT(fn_prefix, _resize)(vec, vec->_length - 1); \
     return vec->_elements[vec->_length]; \
 } \
-static inline it_type CAT(fn_prefix, _iterator)(const vec_type* vec, direction_t dir) { \
+static SILENCE_UNUSED it_type CAT(fn_prefix, _iterator)(const vec_type* vec, direction_t dir) { \
     if (vec == NULL) VEC_ERROR("vec must not be NULL"); \
     it_type iterator; \
     iterator._vec = vec; \
@@ -170,26 +168,26 @@ static inline it_type CAT(fn_prefix, _iterator)(const vec_type* vec, direction_t
     } \
     return iterator; \
 } \
-static inline void CAT(fn_prefix, _set_direction)(it_type* iterator, direction_t dir) { \
+static SILENCE_UNUSED void CAT(fn_prefix, _set_direction)(it_type* iterator, direction_t dir) { \
     if (iterator == NULL) VEC_ERROR("iterator must not be NULL"); \
     if (dir == IT_FORWARDS) iterator->_dir = 1; \
     else if (dir == IT_BACKWARDS) iterator->_dir = -1; \
     else VEC_ERROR("unknown iterator direction %d", dir); \
 } \
-static inline bool CAT(fn_prefix, _has_next)(const it_type* iterator) { \
+static SILENCE_UNUSED bool CAT(fn_prefix, _has_next)(const it_type* iterator) { \
     if (iterator == NULL) VEC_ERROR("iterator must not be NULL"); \
-    return iterator->_idx + iterator->_dir < iterator->_vec->_length && iterator->_idx + iterator->_dir >= 0; \
+    return iterator->_idx + iterator->_dir < iterator->_vec->_length; \
 } \
-static inline type CAT(fn_prefix, _next)(it_type* iterator) { \
+static SILENCE_UNUSED type CAT(fn_prefix, _next)(it_type* iterator) { \
     if (iterator == NULL) VEC_ERROR("iterator must not be NULL"); \
     iterator->_idx += iterator->_dir; \
     return CAT(fn_prefix, _get)(iterator->_vec, iterator->_idx); \
 } \
-static inline u32 CAT(fn_prefix, _get_iterator_index)(it_type* iterator) { \
+static SILENCE_UNUSED u32 CAT(fn_prefix, _get_iterator_index)(it_type* iterator) { \
     if (iterator == NULL) VEC_ERROR("iterator must not be NULL"); \
     return iterator->_idx; \
 } \
-static inline type* CAT(fn_prefix, _nextp)(it_type* iterator) { \
+static SILENCE_UNUSED type* CAT(fn_prefix, _nextp)(it_type* iterator) { \
     if (iterator == NULL) VEC_ERROR("iterator must not be NULL"); \
     iterator->_idx += iterator->_dir; \
     return CAT(fn_prefix, _getp)(iterator->_vec, iterator->_idx); \

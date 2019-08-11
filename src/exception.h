@@ -59,11 +59,11 @@ typedef struct _exception_data {
 extern jmp_buf _exception_jump_buf;
 extern volatile _exception_data_t _exception_data;
 
-#define THROW_EXCEPTION_WITH_MSG(exception_code, args...) \
+#define THROW_EXCEPTION_WITH_MSG(exception_code, ...) \
 do { \
     if (!_exception_data.active) { \
-        fprintf(stderr, "unhandled %s exception at %s(%s:%d): ", exception_code_to_string(exception_code), __FUNCTION__, __FILE__, __LINE__); \
-        fprintf(stderr, args); \
+        fprintf(stderr, "unhandled %s exception at %s(%s:%d): ", exception_code_to_string(exception_code), __func__, __FILE__, __LINE__); \
+        fprintf(stderr, __VA_ARGS__); \
         fprintf(stderr, "\n"); \
         fflush(stderr); \
         abort(); \
@@ -71,9 +71,9 @@ do { \
     _exception_data.active = false; \
     _exception_data.code = exception_code; \
     strncpy((char *) _exception_data.file, __FILE__, 1024); \
-    strncpy((char *) _exception_data.function, __FUNCTION__, 1024); \
+    strncpy((char *) _exception_data.function, __func__, 1024); \
     _exception_data.line = __LINE__; \
-    snprintf((char *) _exception_data.message, 1024, args); \
+    snprintf((char *) _exception_data.message, 1024, __VA_ARGS__); \
     longjmp(_exception_jump_buf, 1); \
 } while (0)
 
@@ -93,6 +93,10 @@ do { \
         char* file = (char*) _exception_data.file; \
         char* function = (char*) _exception_data.function; \
         int line = _exception_data.line; \
+         (void)(exception); \
+         (void)(file); \
+         (void)(function); \
+         (void)(line); \
         {catch_clause} \
     } \
 }

@@ -26,21 +26,21 @@ void init_tables(eval_state_t *eval_state) {
         });
     }
 
-    for (int i = 0; i < vec_element_length(elements); i++) {
+    for (u32 i = 0; i < vec_element_length(elements); i++) {
         element_t elem = vec_element_get(elements, i);
 
         if (elem.table != 0) {
             THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "only table index 0 supported");
         }
 
-        for (int j = 0; i < vec_instruction_length(elem.offset.instructions); i++) {
+        for (u32 j = 0; i < vec_instruction_length(elem.offset.instructions); i++) {
             eval_instr(eval_state, vec_instruction_getp(elem.offset.instructions, j));
         }
 
         //the result of the expression should be on the operand stack now, so we can consume it
         u32 offset = pop_i32(eval_state->opd_stack);
 
-        for (int j = 0; j < vec_funcidx_length(elem.init); j++) {
+        for (u32 j = 0; j < vec_funcidx_length(elem.init); j++) {
             table_entry_t *table_entry = vec_table_entry_getp(eval_state->table, offset + j);
             table_entry->initialized = true;
             table_entry->funcidx = vec_funcidx_get(elem.init, j);

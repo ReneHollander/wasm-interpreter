@@ -31,7 +31,7 @@ void eval_call(eval_state_t *eval_state, func_t *func) {
     vec_locals_iterator_t locals_it = vec_locals_iterator(func->locals, IT_FORWARDS);
     while (vec_locals_has_next(&locals_it)) {
         locals_t locals = vec_locals_next(&locals_it);
-        for (int i = 0; i < locals.n; i++) {
+        for (u32 i = 0; i < locals.n; i++) {
             vec_local_entry_add(current->locals, (local_entry_t) {
                     .val = {0},
                     .valtype = locals.t,

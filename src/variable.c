@@ -16,7 +16,7 @@ void init_globals(eval_state_t *eval_state, vec_global_t *_globals) {
     vec_global_iterator_t it = vec_global_iterator(_globals, IT_FORWARDS);
     while (vec_global_has_next(&it)) {
         global_t *global = vec_global_nextp(&it);
-        for (int i = 0; i < vec_instruction_length(global->e.instructions); i++) {
+        for (u32 i = 0; i < vec_instruction_length(global->e.instructions); i++) {
             eval_instr(eval_state, vec_instruction_getp(global->e.instructions, i));
         }
 

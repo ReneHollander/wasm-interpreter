@@ -98,7 +98,7 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
                                  "data section only for memory with index 0 supported");
     }
 
-    for (int j = 0; j < vec_instruction_length(data.expression.instructions); j++) {
+    for (u32 j = 0; j < vec_instruction_length(data.expression.instructions); j++) {
         eval_instr(eval_state, vec_instruction_getp(data.expression.instructions, j));
     }
 
@@ -126,7 +126,7 @@ void init_interpreter(eval_state_t *eval_state) {
         use_memory(mem);
     }
     if (eval_state->module->imports != NULL) {
-        for (int i = 0; i < vec_import_length(eval_state->module->imports); i++) {
+        for (u32 i = 0; i < vec_import_length(eval_state->module->imports); i++) {
             if (vec_import_get(eval_state->module->imports, i).desc == IMPORTDESC_MEM) {
                 if (hasMem) {
                     THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_IMPORT, "only one memory import supported");

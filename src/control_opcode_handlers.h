@@ -4,7 +4,7 @@
 #include "handler.h"
 #include "stack.h"
 
-static inline void eval_br(eval_state_t *eval_state, instruction_t *instr) {
+static void eval_br(eval_state_t *eval_state, instruction_t *instr) {
     labelidx labelidx = instr->labelidx;
     frame_t *frame = vec_frame_getp(eval_state->frames, vec_frame_length(eval_state->frames) - labelidx - 1);
     bool has_result = frame->arity > 0 ? true : false;

@@ -11,7 +11,7 @@
 
 #define REGISTER_OP_HANDLER(op) case op: CAT(op, _HANDLER(eval_state, instr)); return
 
-static inline void handle_instruction(eval_state_t *eval_state, instruction_t *instr) {
+static void handle_instruction(eval_state_t *eval_state, instruction_t *instr) {
     switch (instr->opcode) {
         REGISTER_OP_HANDLER(OP_LOCAL_GET);
         REGISTER_OP_HANDLER(OP_LOCAL_SET);
