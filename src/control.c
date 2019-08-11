@@ -5,6 +5,7 @@
 #include "stack.h"
 #include "interpreter.h"
 #include "stack.h"
+#include "strings.h"
 
 static void eval_return(eval_state_t *eval_state);
 
@@ -30,7 +31,7 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
     } else if (opcode == OP_NOP) {
         //do nothing
     } else if (opcode == OP_UNREACHABLE) {
-        interpreter_exit(eval_state);
+        THROW_EXCEPTION(EXCEPTION_INTERPRETER_REACHED_OP_UNREACHABLE);
     } else if (opcode == OP_BLOCK) {
         eval_block(eval_state, instr);
     } else if (opcode == OP_BR) {
@@ -48,8 +49,8 @@ void eval_control_instr(eval_state_t *eval_state, instruction_t *instr) {
     } else if (opcode == OP_CALL_INDIRECT) {
         eval_call_indirect(eval_state, instr);
     } else {
-        fprintf(stderr, "not yet implemented control instruction (opcode %x)\n", opcode);
-        interpreter_exit(eval_state);
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
+                                 opcode2str(opcode), opcode);
     }
 }
 
@@ -95,7 +96,8 @@ static void eval_call_indirect(eval_state_t *eval_state, instruction_t *instr) {
     table_entry_t *table_entry = vec_table_entry_getp(eval_state->table, offset);
 
     if (!table_entry->initialized) {
-        interpreter_error(eval_state, "call_indirect referencing uninitialized table entry\n");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_UNINITIALIZED,
+                                 "call_indirect referencing uninitialized table entry");
     }
 
     func_t *func = vec_func_getp(eval_state->module->funcs, table_entry->funcidx);

@@ -61,12 +61,12 @@ _interpret_function(eval_state_t *eval_state, char *func_name, vec_parameter_val
         ret->type = vec_valtype_get(fun_output, 0);
         pop_generic_assert_type(eval_state->opd_stack, vec_valtype_get(fun_output, 0), &ret->val);
     } else if (vec_valtype_length(fun_output) > 1) {
-        interpreter_error(eval_state, "more than one result is not supported currently\n");
+        THROW_EXCEPTION(EXCEPTION_INTERPRETER_ONLY_ONE_RETURN_VALUE_ALLOWED);
     }
 
     //if the operand stack is not empty, something went wrong
     if (!vec_stack_entry_empty(eval_state->opd_stack)) {
-        interpreter_error(eval_state, "operand stack is not empty");
+        THROW_EXCEPTION(EXCEPTION_INTERPRETER_OPERAND_STACK_NOT_EMPTY);
     }
 }
 
@@ -91,17 +91,18 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
     if (vec_data_length(_datas) == 0) return;
 
     if (vec_data_length(_datas) > 1) {
-        interpreter_error(eval_state, "only one data section allowed");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "only one data section allowed");
     }
 
     memory_t *memory = get_current_memory();
     if (memory == NULL) {
-        interpreter_error(eval_state, "no memory found");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NO_MEMORY, "trying to load data section without memory");
     }
 
     data_t data = vec_data_get(_datas, 0);
     if (data.memidx != 0) {
-        interpreter_error(eval_state, "data section only for memory with index 0 supported");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION,
+                                 "data section only for memory with index 0 supported");
     }
 
     for (int j = 0; j < vec_instruction_length(data.expression.instructions); j++) {
@@ -112,7 +113,7 @@ void init_datas(eval_state_t *eval_state, vec_data_t *_datas) {
     i32 offset = pop_i32(eval_state->opd_stack);
 
     if (memory->size * PAGE_SIZE < offset + vec_byte_length(data.init)) {
-        interpreter_error(eval_state, "data section does not fit into memory");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "data section does not fit into memory");
     }
 
     // TODO: fix unsafe array access
@@ -125,7 +126,7 @@ void init_interpreter(eval_state_t *eval_state) {
 
     if (eval_state->module->mems != NULL) {
         if (vec_memtype_length(eval_state->module->mems) > 1) {
-            interpreter_error(eval_state, "only one memory section supported");
+            THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "only one memory section supported");
         }
         memtype = vec_memtype_get(eval_state->module->mems, 0);
         memory_t *mem = create_memory(memtype.lim.min);
@@ -135,7 +136,7 @@ void init_interpreter(eval_state_t *eval_state) {
         for (int i = 0; i < vec_import_length(eval_state->module->imports); i++) {
             if (vec_import_get(eval_state->module->imports, i).desc == IMPORTDESC_MEM) {
                 if (hasMem) {
-                    interpreter_error(eval_state, "only one memory import supported");
+                    THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_IMPORT, "only one memory import supported");
                 } else {
                     memtype = vec_import_get(eval_state->module->imports, i).mem;
                     hasMem = true;
@@ -160,7 +161,7 @@ void init_interpreter(eval_state_t *eval_state) {
     }
 
     if (eval_state->module->exports == NULL || eval_state->module->types == NULL || eval_state->module->funcs == NULL) {
-        interpreter_error(eval_state, "could not find all required sections \n");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "could not find all required sections");
     }
 }
 
@@ -202,8 +203,8 @@ void eval_instr(eval_state_t *eval_state, instruction_t *instr) {
     } else if (is_memory_instr(opcode)) {
         eval_memory_instr(eval_state, *instr);
     } else {
-        fprintf(stderr, "not yet implemented instruction %s (opcode 0x%x)\n", opcode2str(*opcode), *opcode);
-        interpreter_exit(eval_state);
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
+                                 opcode2str(*opcode), *opcode);
     }
 }
 
@@ -225,8 +226,8 @@ static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr
     } else if (opcode == OP_SELECT) {
         eval_select(eval_state);
     } else {
-        fprintf(stderr, "not yet implemented parametric instruction (opcode %x)\n", opcode);
-        interpreter_exit(eval_state);
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
+                                 opcode2str(opcode), opcode);
     }
 }
 
@@ -243,14 +244,4 @@ static void eval_select(eval_state_t *eval_state) {
     } else {
         push_generic(eval_state->opd_stack, valtype, val2);
     }
-}
-
-void interpreter_error(eval_state_t *eval_state, char *err_message) {
-    fprintf(stderr, "%s\n", err_message);
-    interpreter_exit(eval_state);
-}
-
-void interpreter_exit(eval_state_t *eval_state) {
-    free_interpreter(eval_state);
-    exit(EXIT_FAILURE);
 }

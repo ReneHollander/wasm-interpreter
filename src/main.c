@@ -11,11 +11,6 @@
 
 char *prg_name;
 
-void parse_error(char *msg) {
-    fprintf(stderr, "Error parsing module: %s\n", msg);
-    exit(EXIT_FAILURE);
-}
-
 void usage() {
     fprintf(stderr, "Usage: %s <-p name> <-f name> [-a type:value]...\n", prg_name);
     exit(EXIT_FAILURE);
@@ -121,7 +116,7 @@ int main(int argc, char *argv[]) {
                 break;
             default:
                 fprintf(stderr, "unknown return valtype");
-                interpreter_exit(NULL);
+                exit(1);
         }
     }
 

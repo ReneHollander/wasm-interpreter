@@ -33,6 +33,18 @@ const char *exception_to_string[] = {
         [EXCEPTION_PARSER_UNKNOWN_SECTION_TYPE] = "parser unknown section type",
         [EXCEPTION_PARSER_UNKNOWN_MAGIC_VALUE] = "parser unknown magic value",
         [EXCEPTION_PARSER_VERSION_NOT_SUPPORTED] = "parser version not supported",
+
+        [EXCEPTION_INTERPRETER_ONLY_ONE_RETURN_VALUE_ALLOWED] = "interpreter only one return value allowed",
+        [EXCEPTION_INTERPRETER_OPERAND_STACK_NOT_EMPTY] = "interpreter operand stack not empty",
+        [EXCEPTION_INTERPRETER_INVALID_SECTION] = "interpreter invalid section",
+        [EXCEPTION_INTERPRETER_NO_MEMORY] = "interpreter no memory",
+        [EXCEPTION_INTERPRETER_INVALID_MEMORY] = "interpreter invalid memory",
+        [EXCEPTION_INTERPRETER_INVALID_IMPORT] = "interpreter invalid import",
+        [EXCEPTION_INTERPRETER_INVALID_INSTRUCTION] = "interpreter invalid instruction",
+        [EXCEPTION_INTERPRETER_REACHED_OP_UNREACHABLE] = "interpreter reached op unreachable",
+        [EXCEPTION_INTERPRETER_UNINITIALIZED] = "interpreter uninitialized",
+        [EXCEPTION_INTERPRETER_MEMORY_ACCESS_OUT_OF_BOUNDS] = "interpreter memory access out of bounds",
+        [EXCEPTION_INTERPRETER_NOT_FOUND] = "interpreter not found",
 };
 
 const char *exception_code_to_string(exception_t ex) {

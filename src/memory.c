@@ -4,6 +4,7 @@
 #include "interpreter.h"
 #include "util.h"
 #include "stack.h"
+#include "strings.h"
 
 static memory_t *memory = NULL;
 
@@ -31,15 +32,16 @@ void free_memory(memory_t *m) {
 
 void init_memory(eval_state_t *eval_state, memtype_t mem) {
     if (memory == NULL) {
-        interpreter_error(eval_state, "this module needs memory");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NO_MEMORY, "this module needs memory");
     }
 
     if (mem.lim.min > memory->size) {
-        interpreter_error(eval_state, "memory size is too small for this import");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_MEMORY, "memory size is too small for this import");
     }
 
     if (mem.lim.has_max && mem.lim.max > memory->max_size) {
-        interpreter_error(eval_state, "maximum memory size is too small for this import");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_MEMORY,
+                                 "maximum memory size is too small for this import");
     }
 }
 
@@ -80,14 +82,14 @@ i32 calculate_address(eval_state_t *eval_state, instruction_t instr, i32 bit_wid
     i32 a = pop_i32(eval_state->opd_stack);
     i32 ea = a + instr.memarg.offset;
     if ((ea + bit_width / 8) > (memory->size * PAGE_SIZE)) {
-        interpreter_error(eval_state, "memory access is out of bounds\n");
+        THROW_EXCEPTION(EXCEPTION_INTERPRETER_MEMORY_ACCESS_OUT_OF_BOUNDS);
     }
     return ea;
 }
 
 void eval_memory_instr(eval_state_t *eval_state, instruction_t instr) {
     if (memory == NULL) {
-        interpreter_error(eval_state, "no memory found\n");
+        THROW_EXCEPTION(EXCEPTION_INTERPRETER_NO_MEMORY);
     }
 
 #define LOAD_INSN(eval_state, srctype, targettype) \
@@ -161,8 +163,9 @@ void eval_memory_instr(eval_state_t *eval_state, instruction_t instr) {
     } else if (opcode == OP_MEMORY_SIZE) {
         push_i32(eval_state->opd_stack, memory->size);
     } else if (opcode == OP_MEMORY_GROW) {
-        interpreter_error(eval_state, "memory opcode not implemented\n");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "memory grow opcode not implemented");
     } else {
-        interpreter_error(eval_state, "unknown memory opcode\n");
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
+                                 opcode2str(opcode), opcode);
     }
 }

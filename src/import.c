@@ -13,8 +13,8 @@ func_t *find_exported_func(eval_state_t *eval_state, module_t *module, char *fun
         }
     }
 
-    fprintf(stderr, "could not find function with name: %s in exports\n", func_name);
-    interpreter_exit(eval_state);
+    THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NOT_FOUND, "could not find function with name: %s in exports",
+                             func_name);
 }
 
 global_t *find_exported_global(eval_state_t *eval_state, module_t *module, char *global_name) {
@@ -26,8 +26,8 @@ global_t *find_exported_global(eval_state_t *eval_state, module_t *module, char 
         }
     }
 
-    fprintf(stderr, "could not find global with name: %s in exports\n", global_name);
-    interpreter_exit(eval_state);
+    THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NOT_FOUND, "could not find global with name: %s in exports",
+                             global_name);
 }
 
 func_t *find_func_global(eval_state_t *eval_state, char *module_name, char *func_name) {
@@ -39,8 +39,7 @@ func_t *find_func_global(eval_state_t *eval_state, char *module_name, char *func
         }
     }
 
-    fprintf(stderr, "could not find module with name: %s\n", module_name);
-    interpreter_exit(eval_state);
+    THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NOT_FOUND, "could not find module with name: %s", module_name);
 }
 
 global_t *find_global_global(eval_state_t *eval_state, char *module_name, char *global_name) {
@@ -52,8 +51,7 @@ global_t *find_global_global(eval_state_t *eval_state, char *module_name, char *
         }
     }
 
-    fprintf(stderr, "could not find module with name: %s\n", module_name);
-    interpreter_exit(eval_state);
+    THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_NOT_FOUND, "could not find module with name: %s", module_name);
 }
 
 void init_imports(eval_state_t *eval_state, vec_import_t *imports) {

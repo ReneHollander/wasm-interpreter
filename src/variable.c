@@ -4,6 +4,8 @@
 #include "variable.h"
 #include "interpreter.h"
 #include "stack.h"
+#include "instruction.h"
+#include "strings.h"
 
 static inline void eval_local_get(eval_state_t *eval_state, localidx idx) {
     frame_t *frame = peek_func_frame(eval_state->frames);
@@ -53,8 +55,8 @@ void eval_variable_instr(eval_state_t *eval_state, instruction_t *instr) {
             eval_global_set(eval_state, instr->globalidx);
             break;
         default:
-            fprintf(stderr, "variable instruction with opcode %X currently not supported\n", opcode);
-            interpreter_exit(eval_state);
+            THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
+                                     opcode2str(opcode), opcode);
     }
 }
 

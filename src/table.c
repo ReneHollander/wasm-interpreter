@@ -12,8 +12,7 @@ void init_tables(eval_state_t *eval_state) {
     vec_tabletype_t *tables = eval_state->module->tables;
 
     if (vec_tabletype_length(tables) > 1) {
-        interpreter_error(eval_state, "at most 1 table is supported currently.\n");
-    } else if (vec_tabletype_length(tables) == 0) {
+        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "at most 1 table supported");
         return;
     }
 
@@ -31,7 +30,7 @@ void init_tables(eval_state_t *eval_state) {
         element_t elem = vec_element_get(elements, i);
 
         if (elem.table != 0) {
-            interpreter_error(eval_state, "only table index 0 is supported currently.\n");
+            THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_SECTION, "only table index 0 supported");
         }
 
         for (int j = 0; i < vec_instruction_length(elem.offset.instructions); i++) {
