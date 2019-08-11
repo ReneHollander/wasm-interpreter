@@ -30,10 +30,15 @@ add_library(interpreter
         src/interpreter.c
         src/interpreter.h
         src/stack.h
-        src/numeric.c
-        src/numeric.h
+        src/handler.h
+        src/numeric_opcode_handlers.h
+        src/variable_opcode_handlers.h
+        src/parametric_opcode_handlers.h
+        src/memory_opcode_handlers.h
+        src/control_opcode_handlers.h
         src/memory.c
         src/memory.h
+        src/opcode.h
         src/variable.c
         src/variable.h
         src/control.c

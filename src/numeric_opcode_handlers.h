@@ -1,23 +1,12 @@
-/*
- * Contains everything related to
- * numeric instructions
- */
+#ifndef WASM_INTERPRETER_NUMERIC_OPCODE_HANDLERS_H
+#define WASM_INTERPRETER_NUMERIC_OPCODE_HANDLERS_H
 
-#include "stdio.h"
-#include "numeric.h"
 #include "type.h"
 #include "instruction.h"
-#include "math.h"
 #include "interpreter.h"
+#include "math.h"
 #include "stack.h"
-
-typedef void (*numeric_func)(eval_state_t *eval_state, instruction_t *instr);
-
-#define OP_HANDLER(op) \
-    static void CAT(op, _HANDLER)(eval_state_t *eval_state, instruction_t *instr) \
-
-#define ADD_OP_HANDLER(op) \
-    [op] = op ## _HANDLER
+#include "handler.h"
 
 OP_HANDLER(OP_I32_CONST) {
     push_i32(eval_state->opd_stack, instr->const_i32);
@@ -777,150 +766,4 @@ OP_HANDLER(OP_F64_REINTERPRET_I64) {
     });
 }
 
-static numeric_func OP_HANDLERS[255] = {
-        ADD_OP_HANDLER(OP_I32_CONST),
-        ADD_OP_HANDLER(OP_I64_CONST),
-        ADD_OP_HANDLER(OP_F32_CONST),
-        ADD_OP_HANDLER(OP_F64_CONST),
-
-        ADD_OP_HANDLER(OP_I32_EQZ),
-        ADD_OP_HANDLER(OP_I32_EQ),
-        ADD_OP_HANDLER(OP_I32_NE),
-        ADD_OP_HANDLER(OP_I32_LT_S),
-        ADD_OP_HANDLER(OP_I32_LT_U),
-        ADD_OP_HANDLER(OP_I32_GT_S),
-        ADD_OP_HANDLER(OP_I32_GT_U),
-        ADD_OP_HANDLER(OP_I32_LE_S),
-        ADD_OP_HANDLER(OP_I32_LE_U),
-        ADD_OP_HANDLER(OP_I32_GE_S),
-        ADD_OP_HANDLER(OP_I32_GE_U),
-
-        ADD_OP_HANDLER(OP_I64_EQZ),
-        ADD_OP_HANDLER(OP_I64_EQ),
-        ADD_OP_HANDLER(OP_I64_NE),
-        ADD_OP_HANDLER(OP_I64_LT_S),
-        ADD_OP_HANDLER(OP_I64_LT_U),
-        ADD_OP_HANDLER(OP_I64_GT_S),
-        ADD_OP_HANDLER(OP_I64_GT_U),
-        ADD_OP_HANDLER(OP_I64_LE_S),
-        ADD_OP_HANDLER(OP_I64_LE_U),
-        ADD_OP_HANDLER(OP_I64_GE_S),
-        ADD_OP_HANDLER(OP_I64_GE_U),
-
-        ADD_OP_HANDLER(OP_F32_EQ),
-        ADD_OP_HANDLER(OP_F32_NE),
-        ADD_OP_HANDLER(OP_F32_LT),
-        ADD_OP_HANDLER(OP_F32_GT),
-        ADD_OP_HANDLER(OP_F32_LE),
-        ADD_OP_HANDLER(OP_F32_GE),
-
-        ADD_OP_HANDLER(OP_F64_EQ),
-        ADD_OP_HANDLER(OP_F64_NE),
-        ADD_OP_HANDLER(OP_F64_LT),
-        ADD_OP_HANDLER(OP_F64_GT),
-        ADD_OP_HANDLER(OP_F64_LE),
-        ADD_OP_HANDLER(OP_F64_GE),
-
-        ADD_OP_HANDLER(OP_I32_CLZ),
-        ADD_OP_HANDLER(OP_I32_CTZ),
-        ADD_OP_HANDLER(OP_I32_POPCNT),
-        ADD_OP_HANDLER(OP_I32_ADD),
-        ADD_OP_HANDLER(OP_I32_SUB),
-        ADD_OP_HANDLER(OP_I32_MUL),
-        ADD_OP_HANDLER(OP_I32_DIV_S),
-        ADD_OP_HANDLER(OP_I32_DIV_U),
-        ADD_OP_HANDLER(OP_I32_REM_S),
-        ADD_OP_HANDLER(OP_I32_REM_U),
-        ADD_OP_HANDLER(OP_I32_AND),
-        ADD_OP_HANDLER(OP_I32_OR),
-        ADD_OP_HANDLER(OP_I32_XOR),
-        ADD_OP_HANDLER(OP_I32_SHL),
-        ADD_OP_HANDLER(OP_I32_SHR_U),
-        ADD_OP_HANDLER(OP_I32_SHR_S),
-        ADD_OP_HANDLER(OP_I32_ROTL),
-        ADD_OP_HANDLER(OP_I32_ROTR),
-
-        ADD_OP_HANDLER(OP_I64_CLZ),
-        ADD_OP_HANDLER(OP_I64_CTZ),
-        ADD_OP_HANDLER(OP_I64_POPCNT),
-        ADD_OP_HANDLER(OP_I64_ADD),
-        ADD_OP_HANDLER(OP_I64_SUB),
-        ADD_OP_HANDLER(OP_I64_MUL),
-        ADD_OP_HANDLER(OP_I64_DIV_S),
-        ADD_OP_HANDLER(OP_I64_DIV_U),
-        ADD_OP_HANDLER(OP_I64_REM_S),
-        ADD_OP_HANDLER(OP_I64_REM_U),
-        ADD_OP_HANDLER(OP_I64_AND),
-        ADD_OP_HANDLER(OP_I64_OR),
-        ADD_OP_HANDLER(OP_I64_XOR),
-        ADD_OP_HANDLER(OP_I64_SHL),
-        ADD_OP_HANDLER(OP_I64_SHR_U),
-        ADD_OP_HANDLER(OP_I64_SHR_S),
-        ADD_OP_HANDLER(OP_I64_ROTL),
-        ADD_OP_HANDLER(OP_I64_ROTR),
-
-        ADD_OP_HANDLER(OP_F32_ABS),
-        ADD_OP_HANDLER(OP_F32_NEG),
-        ADD_OP_HANDLER(OP_F32_CEIL),
-        ADD_OP_HANDLER(OP_F32_FLOOR),
-        ADD_OP_HANDLER(OP_F32_TRUNC),
-        ADD_OP_HANDLER(OP_F32_NEAREST),
-        ADD_OP_HANDLER(OP_F32_SQRT),
-        ADD_OP_HANDLER(OP_F32_ADD),
-        ADD_OP_HANDLER(OP_F32_SUB),
-        ADD_OP_HANDLER(OP_F32_MUL),
-        ADD_OP_HANDLER(OP_F32_DIV),
-        ADD_OP_HANDLER(OP_F32_MIN),
-        ADD_OP_HANDLER(OP_F32_MAX),
-        ADD_OP_HANDLER(OP_F32_COPYSIGN),
-
-        ADD_OP_HANDLER(OP_F64_ABS),
-        ADD_OP_HANDLER(OP_F64_NEG),
-        ADD_OP_HANDLER(OP_F64_CEIL),
-        ADD_OP_HANDLER(OP_F64_FLOOR),
-        ADD_OP_HANDLER(OP_F64_TRUNC),
-        ADD_OP_HANDLER(OP_F64_NEAREST),
-        ADD_OP_HANDLER(OP_F64_SQRT),
-        ADD_OP_HANDLER(OP_F64_ADD),
-        ADD_OP_HANDLER(OP_F64_SUB),
-        ADD_OP_HANDLER(OP_F64_MUL),
-        ADD_OP_HANDLER(OP_F64_DIV),
-        ADD_OP_HANDLER(OP_F64_MIN),
-        ADD_OP_HANDLER(OP_F64_MAX),
-        ADD_OP_HANDLER(OP_F64_COPYSIGN),
-
-        ADD_OP_HANDLER(OP_I32_WRAP_I64),
-        ADD_OP_HANDLER(OP_I32_TRUNC_F32_S),
-        ADD_OP_HANDLER(OP_I32_TRUNC_F32_U),
-        ADD_OP_HANDLER(OP_I32_TRUNC_F64_S),
-        ADD_OP_HANDLER(OP_I32_TRUNC_F64_U),
-        ADD_OP_HANDLER(OP_I64_EXTEND_I32_S),
-        ADD_OP_HANDLER(OP_I64_EXTEND_I32_U),
-        ADD_OP_HANDLER(OP_I64_TRUNC_F32_S),
-        ADD_OP_HANDLER(OP_I64_TRUNC_F32_U),
-        ADD_OP_HANDLER(OP_I64_TRUNC_F64_S),
-        ADD_OP_HANDLER(OP_I64_TRUNC_F64_U),
-        ADD_OP_HANDLER(OP_F32_CONVERT_I32_S),
-        ADD_OP_HANDLER(OP_F32_CONVERT_I32_U),
-        ADD_OP_HANDLER(OP_F32_CONVERT_I64_S),
-        ADD_OP_HANDLER(OP_F32_CONVERT_I64_U),
-        ADD_OP_HANDLER(OP_F32_DEMOTE_F64),
-        ADD_OP_HANDLER(OP_F64_CONVERT_I32_S),
-        ADD_OP_HANDLER(OP_F64_CONVERT_I32_U),
-        ADD_OP_HANDLER(OP_F64_CONVERT_I64_S),
-        ADD_OP_HANDLER(OP_F64_CONVERT_I64_U),
-        ADD_OP_HANDLER(OP_F64_PROMOTE_F32),
-        ADD_OP_HANDLER(OP_I32_REINTERPRET_F32),
-        ADD_OP_HANDLER(OP_I64_REINTERPRET_F64),
-        ADD_OP_HANDLER(OP_F32_REINTERPRET_I32),
-        ADD_OP_HANDLER(OP_F64_REINTERPRET_I64),
-};
-
-
-bool is_numeric_instr(const opcode_t *opcode) {
-    return OP_HANDLERS[*opcode] != NULL;
-}
-
-void eval_numeric_instr(eval_state_t *eval_state, instruction_t *instr) {
-    OP_HANDLERS[instr->opcode](eval_state, instr);
-}
+#endif //WASM_INTERPRETER_NUMERIC_OPCODE_HANDLERS_H

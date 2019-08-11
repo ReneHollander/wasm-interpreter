@@ -5,7 +5,7 @@
 #include "interpreter.h"
 #include "instruction.h"
 #include "stack.h"
-#include "numeric.h"
+#include "numeric_opcode_handlers.h"
 #include "memory.h"
 #include "variable.h"
 #include "control.h"
@@ -13,14 +13,7 @@
 #include "eval_types.h"
 #include "table.h"
 #include "import.h"
-
-static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr);
-
-static void eval_global_instrs(eval_state_t *eval_state, vec_instruction_t *instructions);
-
-static bool is_parametric_instr(const opcode_t *opcode);
-
-static void eval_select(eval_state_t *eval_state);
+#include "opcode.h"
 
 static instruction_t *fetch_next_instr(eval_state_t *eval_state);
 
@@ -190,58 +183,5 @@ static instruction_t *fetch_next_instr(eval_state_t *eval_state) {
 }
 
 void eval_instr(eval_state_t *eval_state, instruction_t *instr) {
-    opcode_t *opcode = &instr->opcode;
-
-    if (is_numeric_instr(opcode)) {
-        eval_numeric_instr(eval_state, instr);
-    } else if (is_variable_instr(opcode)) {
-        eval_variable_instr(eval_state, instr);
-    } else if (is_control_instr(opcode)) {
-        eval_control_instr(eval_state, instr);
-    } else if (is_parametric_instr(opcode)) {
-        eval_parametric_instr(eval_state, instr);
-    } else if (is_memory_instr(opcode)) {
-        eval_memory_instr(eval_state, *instr);
-    } else {
-        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
-                                 opcode2str(*opcode), *opcode);
-    }
-}
-
-static bool is_parametric_instr(const opcode_t *opcode) {
-    switch (*opcode) {
-        case OP_DROP:
-        case OP_SELECT:
-            return true;
-        default:
-            return false;
-    }
-}
-
-static void eval_parametric_instr(eval_state_t *eval_state, instruction_t *instr) {
-    opcode_t opcode = instr->opcode;
-
-    if (opcode == OP_DROP) {
-        drop(eval_state->opd_stack);
-    } else if (opcode == OP_SELECT) {
-        eval_select(eval_state);
-    } else {
-        THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
-                                 opcode2str(opcode), opcode);
-    }
-}
-
-static void eval_select(eval_state_t *eval_state) {
-    i32 c = pop_i32(eval_state->opd_stack);
-    valtype_t valtype = peek_valtype(eval_state->opd_stack);
-    val_t val1;
-    val_t val2;
-    pop_generic_assert_type(eval_state->opd_stack, valtype, &val2);
-    pop_generic_assert_type(eval_state->opd_stack, valtype, &val1);
-
-    if (c != 0) {
-        push_generic(eval_state->opd_stack, valtype, val1);
-    } else {
-        push_generic(eval_state->opd_stack, valtype, val2);
-    }
+    handle_instruction(eval_state, instr);
 }

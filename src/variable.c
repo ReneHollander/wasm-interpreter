@@ -7,59 +7,6 @@
 #include "instruction.h"
 #include "strings.h"
 
-static inline void eval_local_get(eval_state_t *eval_state, localidx idx) {
-    frame_t *frame = peek_func_frame(eval_state->frames);
-    local_entry_t *local = vec_local_entry_getp(frame->locals, idx);
-    push_generic(eval_state->opd_stack, local->valtype, local->val);
-}
-
-static inline void eval_local_set(eval_state_t *eval_state, localidx idx) {
-    frame_t *frame = peek_func_frame(eval_state->frames);
-    local_entry_t *local = vec_local_entry_getp(frame->locals, idx);
-    pop_generic_assert_type(eval_state->opd_stack, local->valtype, &local->val);
-}
-
-static inline void eval_local_tee(eval_state_t *eval_state, localidx idx) {
-    frame_t *frame = peek_func_frame(eval_state->frames);
-    local_entry_t *local = vec_local_entry_getp(frame->locals, idx);
-    peek_generic_assert_type(eval_state->opd_stack, local->valtype, &local->val);
-}
-
-static inline void eval_global_get(eval_state_t *eval_state, globalidx idx) {
-    global_entry_t *global = vec_global_entry_getp(eval_state->globals, idx);
-    push_generic(eval_state->opd_stack, global->valtype, global->val);
-}
-
-static inline void eval_global_set(eval_state_t *eval_state, globalidx idx) {
-    global_entry_t *global = vec_global_entry_getp(eval_state->globals, idx);
-    pop_generic_assert_type(eval_state->opd_stack, global->valtype, &global->val);
-}
-
-void eval_variable_instr(eval_state_t *eval_state, instruction_t *instr) {
-    opcode_t opcode = (*instr).opcode;
-
-    switch (opcode) {
-        case OP_LOCAL_GET:
-            eval_local_get(eval_state, instr->localidx);
-            break;
-        case OP_LOCAL_SET:
-            eval_local_set(eval_state, instr->localidx);
-            break;
-        case OP_LOCAL_TEE:
-            eval_local_tee(eval_state, instr->localidx);
-            break;
-        case OP_GLOBAL_GET:
-            eval_global_get(eval_state, instr->globalidx);
-            break;
-        case OP_GLOBAL_SET:
-            eval_global_set(eval_state, instr->globalidx);
-            break;
-        default:
-            THROW_EXCEPTION_WITH_MSG(EXCEPTION_INTERPRETER_INVALID_INSTRUCTION, "opcode %s (0x%x) not implemented",
-                                     opcode2str(opcode), opcode);
-    }
-}
-
 void init_globals(eval_state_t *eval_state, vec_global_t *_globals) {
     eval_state->globals = vec_global_entry_create();
     if (_globals == NULL) {
@@ -79,18 +26,5 @@ void init_globals(eval_state_t *eval_state, vec_global_t *_globals) {
                 .valtype = global->gt.t,
                 .val = val,
         });
-    }
-}
-
-bool is_variable_instr(const opcode_t *opcode) {
-    switch (*opcode) {
-        case OP_LOCAL_GET:
-        case OP_LOCAL_SET:
-        case OP_LOCAL_TEE:
-        case OP_GLOBAL_GET:
-        case OP_GLOBAL_SET:
-            return true;
-        default:
-            return false;
     }
 }
