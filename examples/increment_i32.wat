@@ -1,9 +1,7 @@
 ;;tests function calls, constants, add function
-;;expected result: 43
 
 (module
-  (func $getAnswer (result i32) i32.const 42)
-  (func (export "increment") (result i32)
-    call $getAnswer
-    i32.const 1
+  (func (export "increment") (param i32) (param i32) (result i32)
+    get_local 0
+    get_local 1
     i32.add))
