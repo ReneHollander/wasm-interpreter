@@ -8,7 +8,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-typedef enum exception {
+typedef enum exception_type {
     NO_EXCEPTION = 0,
 
     EXCEPTION_VECTOR_EXCEPTION,
